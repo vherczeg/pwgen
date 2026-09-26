@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Biztonságos jelszó- és jelmondat-generátor</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #eef3ff;
+      --page-accent: #dce9ff;
+      --card: rgba(255, 255, 255, .92);
+      --surface: #f7f9fd;
+      --surface-strong: #eef2f8;
+      --text: #172033;
+      --muted: #657089;
+      --border: #dce3ef;
+      --primary: #3157d5;
+      --primary-hover: #2445b5;
+      --primary-soft: #e8edff;
+      --success: #16805d;
+      --warning: #a45d08;
+      --danger: #b4233d;
+      --shadow: 0 24px 70px rgba(34, 54, 104, .16);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color-scheme: dark;
+        --page: #0d1220;
+        --page-accent: #17213c;
+        --card: rgba(22, 29, 47, .94);
+        --surface: #1b2438;
+        --surface-strong: #222d44;
+        --text: #f4f7ff;
+        --muted: #aeb8ce;
+        --border: #34415b;
+        --primary: #7896ff;
+        --primary-hover: #9aafff;
+        --primary-soft: #263763;
+        --success: #62d2a9;
+        --warning: #ffc66d;
+        --danger: #ff8298;
+        --shadow: 0 24px 70px rgba(0, 0, 0, .34);
+      }
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 32px 18px;
+      display: grid;
+      place-items: center;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 12% 8%, var(--page-accent), transparent 34rem),
+        linear-gradient(145deg, var(--page), color-mix(in srgb, var(--page) 82%, #cbdcff));
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input, select { font: inherit; }
+
+    .app {
+      width: min(720px, 100%);
+      overflow: hidden;
+      border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+      border-radius: 24px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    header { padding: 30px 30px 18px; }
+    h1 { margin: 0 0 8px; font-size: clamp(1.55rem, 5vw, 2.15rem); letter-spacing: -.035em; }
+    .lead { margin: 0; color: var(--muted); line-height: 1.55; }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin: 0 30px;
+      padding: 5px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface-strong);
+    }
+
+    .tab {
+      min-height: 44px;
+      border: 0;
+      border-radius: 10px;
+      color: var(--muted);
+      background: transparent;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    .tab[aria-selected="true"] {
+      color: var(--text);
+      background: var(--card);
+      box-shadow: 0 3px 12px rgba(30, 50, 90, .1);
+    }
+
+    .panel { padding: 24px 30px 30px; }
+    .panel[hidden] { display: none; }
+
+    .result-wrap { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-bottom: 20px; }
+    .result {
+      min-width: 0;
+      min-height: 70px;
+      display: flex;
+      align-items: center;
+      padding: 15px 17px;
+      overflow-wrap: anywhere;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface);
+      font: 700 1.04rem/1.45 ui-monospace, SFMono-Regular, Consolas, monospace;
+      letter-spacing: .02em;
+    }
+
+    .copy {
+      width: 70px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      color: var(--text);
+      background: var(--surface);
+      font-weight: 750;
+      cursor: pointer;
+    }
+    .copy:hover { background: var(--surface-strong); }
+
+    .controls { display: grid; gap: 20px; }
+    .field { display: grid; gap: 9px; }
+    .field-head { display: flex; justify-content: space-between; gap: 16px; align-items: baseline; }
+    .field label, .legend { font-weight: 750; }
+    output { color: var(--primary); font-weight: 800; }
+    .help { margin: -2px 0 0; color: var(--muted); font-size: .82rem; line-height: 1.45; }
+
+    input[type="range"] { width: 100%; accent-color: var(--primary); }
+
+    .checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .check {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 46px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+      cursor: pointer;
+    }
+    .check input { width: 18px; height: 18px; accent-color: var(--primary); }
+
+    select {
+      min-height: 46px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      background: var(--surface);
+    }
+
+    .number-settings {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .number-field {
+      display: grid;
+      gap: 7px;
+      padding: 11px 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+      font-size: .82rem;
+    }
+
+    .number-field input {
+      width: 100%;
+      min-height: 40px;
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      color: var(--text);
+      background: var(--card);
+      font-weight: 800;
+    }
+
+    .generate {
+      min-height: 50px;
+      border: 0;
+      border-radius: 13px;
+      color: white;
+      background: var(--primary);
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 10px 24px color-mix(in srgb, var(--primary) 25%, transparent);
+    }
+    .generate:hover { background: var(--primary-hover); }
+
+    .status {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      padding-top: 2px;
+      color: var(--muted);
+      font-size: .88rem;
+    }
+    .quality { font-weight: 800; }
+    .quality.good { color: var(--success); }
+    .quality.medium { color: var(--warning); }
+    .quality.weak { color: var(--danger); }
+
+    .note {
+      margin: 20px 0 0;
+      padding: 13px 15px;
+      border-left: 4px solid var(--warning);
+      border-radius: 8px;
+      color: var(--muted);
+      background: color-mix(in srgb, var(--warning) 9%, transparent);
+      font-size: .86rem;
+      line-height: 1.5;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      z-index: 10;
+      transform: translate(-50%, 20px);
+      padding: 10px 16px;
+      border-radius: 999px;
+      color: white;
+      background: #152039;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, .22);
+      opacity: 0;
+      pointer-events: none;
+      transition: .2s ease;
+    }
+    .toast.show { transform: translate(-50%, 0); opacity: 1; }
+
+    @media (max-width: 560px) {
+      body { padding: 0; place-items: stretch; }
+      .app { min-height: 100vh; border-radius: 0; }
+      header { padding: 24px 20px 16px; }
+      .tabs { margin: 0 20px; }
+      .panel { padding: 20px; }
+      .checks { grid-template-columns: 1fr; }
+      .number-settings { grid-template-columns: 1fr; }
+      .result-wrap { grid-template-columns: 1fr; }
+      .copy { width: 100%; min-height: 44px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <h1>Jelszó- és jelmondat-generátor</h1>
+      <p class="lead">Minden véletlen választás helyben, a böngésző biztonságos véletlenszám-generátorával történik.</p>
+    </header>
+
+    <div class="tabs" role="tablist" aria-label="Generátor típusa">
+      <button class="tab" id="password-tab" role="tab" aria-controls="password-panel" aria-selected="true">Jelszó</button>
+      <button class="tab" id="phrase-tab" role="tab" aria-controls="phrase-panel" aria-selected="false">Jelmondat</button>
+    </div>
+
+    <section class="panel" id="password-panel" role="tabpanel" aria-labelledby="password-tab">
+      <div class="result-wrap">
+        <div class="result" id="password-result" aria-live="polite"></div>
+        <button class="copy" type="button" data-copy="password-result" aria-label="Jelszó másolása">Másolás</button>
+      </div>
+
+      <div class="controls">
+        <div class="field">
+          <div class="field-head">
+            <label for="password-length">Jelszó hossza</label>
+            <output id="password-length-value" for="password-length">16</output>
+          </div>
+          <input id="password-length" type="range" min="8" max="32" value="16">
+        </div>
+
+        <div class="field">
+          <span class="legend">Használt karakterek</span>
+          <div class="checks">
+            <label class="check"><input id="use-lower" type="checkbox" checked> Kisbetűk</label>
+            <label class="check"><input id="use-upper" type="checkbox" checked> Nagybetűk</label>
+            <label class="check"><input id="use-numbers" type="checkbox" checked> Számjegyek</label>
+            <label class="check"><input id="use-symbols" type="checkbox" checked> Speciális jelek</label>
+          </div>
+        </div>
+
+        <div class="status">
+          <span id="password-bits"></span>
+          <span class="quality" id="password-quality"></span>
+        </div>
+        <button class="generate" id="generate-password" type="button">Új jelszó</button>
+      </div>
+    </section>
+
+    <section class="panel" id="phrase-panel" role="tabpanel" aria-labelledby="phrase-tab" hidden>
+      <div class="result-wrap">
+        <div class="result" id="phrase-result" aria-live="polite"></div>
+        <button class="copy" type="button" data-copy="phrase-result" aria-label="Jelmondat másolása">Másolás</button>
+      </div>
+
+      <div class="controls">
+        <div class="field">
+          <div class="field-head">
+            <label for="word-count">Szavak száma</label>
+            <output id="word-count-value" for="word-count">4</output>
+          </div>
+          <input id="word-count" type="range" min="1" max="10" value="4">
+        </div>
+
+        <div class="field">
+          <span class="legend">Lehetséges elválasztók</span>
+          <div class="checks">
+            <label class="check"><input id="sep-space" type="checkbox" checked> Szóköz</label>
+            <label class="check"><input id="sep-dash" type="checkbox"> Kötőjel (-)</label>
+            <label class="check"><input id="sep-underscore" type="checkbox"> Aláhúzásjel (_)</label>
+            <label class="check"><input id="sep-dot" type="checkbox"> Pont (.)</label>
+          </div>
+          <p class="help">Minden szóköznél véletlenszerűen választ a bejelölt jelek közül. Ha egyet sem jelölsz be, a szavak elválasztás nélkül kapcsolódnak össze.</p>
+        </div>
+
+        <div class="field">
+          <span class="legend">Véletlen számblokkok</span>
+          <div class="number-settings">
+            <label class="number-field" for="number-block-count">
+              Blokkok száma
+              <input id="number-block-count" type="number" min="0" max="12" value="2" inputmode="numeric">
+            </label>
+            <label class="number-field" for="number-min-digits">
+              Minimum számjegy
+              <input id="number-min-digits" type="number" min="1" max="12" value="1" inputmode="numeric">
+            </label>
+            <label class="number-field" for="number-max-digits">
+              Maximum számjegy
+              <input id="number-max-digits" type="number" min="1" max="12" value="2" inputmode="numeric">
+            </label>
+          </div>
+          <p class="help">Minden számblokk véletlenszerűen egy külön szó elejére vagy végére kerül. A nulla darabszám kikapcsolja a számokat. A kezdő nulla is számjegynek számít.</p>
+        </div>
+
+        <div class="field">
+          <span class="legend">Formázás</span>
+          <div class="checks">
+            <label class="check"><input id="capitalize-words" type="checkbox"> Szavak nagy kezdőbetűvel</label>
+          </div>
+        </div>
+
+        <div class="status">
+          <span id="phrase-bits"></span>
+          <span class="quality" id="phrase-quality"></span>
+        </div>
+        <button class="generate" id="generate-phrase" type="button">Új jelmondat</button>
+      </div>
+
+      <p class="note"><strong>Fejlesztési változat:</strong> ez most szándékosan rövid, <span id="word-list-size"></span> szavas mintalistát használ. Valódi, erős jelmondatokhoz később cseréld le egy ellenőrzött, több ezer egyedi szóból álló listára.</p>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite">Vágólapra másolva</div>
+
+  <script>
+    "use strict";
+
+    // Ezt a tömböt később egyszerűen lecserélheted a több ezer szavas listára.
+    const hungarianWords = [
+      "ablak", "alma", "asztal", "bagoly", "barack", "barlang", "béka", "bicikli",
+      "bodza", "bogár", "boróka", "borsó", "búza", "ceruza", "citrom", "csésze",
+      "csiga", "csillag", "csónak", "darázs", "diófa", "doboz", "domb", "egér",
+      "eper", "erdő", "esernyő", "felhő", "fenyő", "folyó", "forrás", "füzet",
+      "galamb", "gesztenye", "gomba", "gólya", "gyertya", "gyöngy", "hajnal", "hajó",
+      "harang", "hegy", "hinta", "hold", "hópehely", "ibolya", "kagyló", "kakas",
+      "kalap", "kamera", "kanál", "kavics", "kecske", "kenyér", "kert", "kígyó",
+      "körte", "kulcs", "lámpa", "lepke", "levél", "madár", "málna", "macska",
+      "mandula", "medve", "méhecske", "mogyoró", "moha", "napfény", "narancs", "nyárfa",
+      "nyuszi", "orgona", "ösvény", "paprika", "parázs", "patak", "pillangó", "rigó",
+      "róka", "rózsa", "sárkány", "sirály", "süni", "szarvas", "szellő", "sziget",
+      "szilva", "szivárvány", "szőlő", "tavasz", "tenger", "tölgy", "tulipán", "tükör",
+      "vitorla", "vonat", "zápor", "zebra"
+    ];
+
+    const characterGroups = {
+      lower: "abcdefghijklmnopqrstuvwxyz",
+      upper: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+      numbers: "0123456789",
+      symbols: "!@#$%^&*()-_=+[]{};:,.?"
+    };
+
+    const $ = (selector) => document.querySelector(selector);
+
+    function secureRandomInt(max) {
+      if (!Number.isSafeInteger(max) || max <= 0) throw new RangeError("A felső határ pozitív egész szám legyen.");
+      const range = 0x100000000;
+      const limit = range - (range % max);
+      const buffer = new Uint32Array(1);
+      do crypto.getRandomValues(buffer); while (buffer[0] >= limit);
+      return buffer[0] % max;
+    }
+
+    function pick(source) {
+      return source[secureRandomInt(source.length)];
+    }
+
+    function secureShuffle(items) {
+      for (let i = items.length - 1; i > 0; i--) {
+        const j = secureRandomInt(i + 1);
+        [items[i], items[j]] = [items[j], items[i]];
+      }
+      return items;
+    }
+
+    function clampInteger(value, minimum, maximum) {
+      const number = Number.parseInt(value, 10);
+      if (!Number.isFinite(number)) return minimum;
+      return Math.min(maximum, Math.max(minimum, number));
+    }
+
+    function log2Combination(n, k) {
+      if (k < 0 || k > n) return Number.NEGATIVE_INFINITY;
+      k = Math.min(k, n - k);
+      let result = 0;
+      for (let i = 1; i <= k; i++) result += Math.log2(n - k + i) - Math.log2(i);
+      return result;
+    }
+
+    function randomDigitString(length) {
+      let result = "";
+      for (let i = 0; i < length; i++) result += String(secureRandomInt(10));
+      return result;
+    }
+
+    function qualityForBits(bits) {
+      if (bits >= 75) return { label: "Nagyon erős", className: "good" };
+      if (bits >= 55) return { label: "Erős", className: "good" };
+      if (bits >= 40) return { label: "Közepes", className: "medium" };
+      return { label: "Gyenge", className: "weak" };
+    }
+
+    function showQuality(bits, bitsElement, qualityElement) {
+      const quality = qualityForBits(bits);
+      bitsElement.textContent = `Becsült entrópia: ${Math.round(bits)} bit`;
+      qualityElement.textContent = quality.label;
+      qualityElement.className = `quality ${quality.className}`;
+    }
+
+    function selectedCharacterGroups() {
+      return [
+        [$("#use-lower").checked, characterGroups.lower],
+        [$("#use-upper").checked, characterGroups.upper],
+        [$("#use-numbers").checked, characterGroups.numbers],
+        [$("#use-symbols").checked, characterGroups.symbols]
+      ].filter(([enabled]) => enabled).map(([, characters]) => characters);
+    }
+
+    function generatePassword() {
+      const groups = selectedCharacterGroups();
+      if (!groups.length) {
+        $("#password-result").textContent = "Válassz legalább egy karaktertípust!";
+        showQuality(0, $("#password-bits"), $("#password-quality"));
+        return;
+      }
+
+      const length = Number($("#password-length").value);
+      const allCharacters = groups.join("");
+      const characters = groups.map(group => pick(group));
+      while (characters.length < length) characters.push(pick(allCharacters));
+      $("#password-result").textContent = secureShuffle(characters).join("");
+
+      const bits = length * Math.log2(allCharacters.length);
+      showQuality(bits, $("#password-bits"), $("#password-quality"));
+    }
+
+    function generatePassphrase() {
+      const count = Number($("#word-count").value);
+      const capitalize = $("#capitalize-words").checked;
+      const words = [];
+      const separators = [
+        [$("#sep-space").checked, " "],
+        [$("#sep-dash").checked, "-"],
+        [$("#sep-underscore").checked, "_"],
+        [$("#sep-dot").checked, "."]
+      ].filter(([enabled]) => enabled).map(([, separator]) => separator);
+
+      for (let i = 0; i < count; i++) {
+        let word = pick(hungarianWords);
+        if (capitalize) word = word.charAt(0).toLocaleUpperCase("hu-HU") + word.slice(1);
+        words.push(word);
+      }
+
+      const availableSlots = words.flatMap((_, wordIndex) => [
+        { wordIndex, side: "before" },
+        { wordIndex, side: "after" }
+      ]);
+      const numberBlockCount = clampInteger($("#number-block-count").value, 0, availableSlots.length);
+      const minimumDigits = clampInteger($("#number-min-digits").value, 1, 12);
+      const maximumDigits = clampInteger($("#number-max-digits").value, minimumDigits, 12);
+
+      $("#number-block-count").max = String(availableSlots.length);
+      $("#number-block-count").value = String(numberBlockCount);
+      $("#number-min-digits").value = String(minimumDigits);
+      $("#number-max-digits").value = String(maximumDigits);
+
+      const selectedSlots = secureShuffle(availableSlots).slice(0, numberBlockCount);
+      for (const slot of selectedSlots) {
+        const digitLength = minimumDigits + secureRandomInt(maximumDigits - minimumDigits + 1);
+        const digits = randomDigitString(digitLength);
+        words[slot.wordIndex] = slot.side === "before"
+          ? digits + words[slot.wordIndex]
+          : words[slot.wordIndex] + digits;
+      }
+
+      let phrase = words[0];
+      for (let i = 1; i < words.length; i++) {
+        phrase += (separators.length ? pick(separators) : "") + words[i];
+      }
+
+      let bits = count * Math.log2(hungarianWords.length);
+      if (separators.length > 1) bits += (count - 1) * Math.log2(separators.length);
+      if (numberBlockCount > 0) {
+        const possibleLengths = maximumDigits - minimumDigits + 1;
+        const averageDigits = (minimumDigits + maximumDigits) / 2;
+        const bitsPerBlock = Math.log2(possibleLengths) + averageDigits * Math.log2(10);
+        bits += log2Combination(availableSlots.length, numberBlockCount);
+        bits += numberBlockCount * bitsPerBlock;
+      }
+
+      $("#phrase-result").textContent = phrase;
+      showQuality(bits, $("#phrase-bits"), $("#phrase-quality"));
+    }
+
+    function switchTab(tabName) {
+      const passwordActive = tabName === "password";
+      $("#password-tab").setAttribute("aria-selected", String(passwordActive));
+      $("#phrase-tab").setAttribute("aria-selected", String(!passwordActive));
+      $("#password-panel").hidden = !passwordActive;
+      $("#phrase-panel").hidden = passwordActive;
+    }
+
+    let toastTimer;
+    function showToast(message) {
+      const toast = $("#toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove("show"), 1500);
+    }
+
+    async function copyResult(id) {
+      const text = document.getElementById(id).textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        const helper = document.createElement("textarea");
+        helper.value = text;
+        helper.setAttribute("readonly", "");
+        helper.style.position = "fixed";
+        helper.style.opacity = "0";
+        document.body.appendChild(helper);
+        helper.select();
+        document.execCommand("copy");
+        helper.remove();
+      }
+      showToast("Vágólapra másolva");
+    }
+
+    $("#password-tab").addEventListener("click", () => switchTab("password"));
+    $("#phrase-tab").addEventListener("click", () => switchTab("phrase"));
+    $("#generate-password").addEventListener("click", generatePassword);
+    $("#generate-phrase").addEventListener("click", generatePassphrase);
+
+    $("#password-length").addEventListener("input", event => {
+      $("#password-length-value").value = event.target.value;
+      generatePassword();
+    });
+    $("#word-count").addEventListener("input", event => {
+      $("#word-count-value").value = event.target.value;
+      generatePassphrase();
+    });
+    ["#use-lower", "#use-upper", "#use-numbers", "#use-symbols"].forEach(id => {
+      $(id).addEventListener("change", generatePassword);
+    });
+    ["#sep-space", "#sep-dash", "#sep-underscore", "#sep-dot", "#capitalize-words"].forEach(id => {
+      $(id).addEventListener("change", generatePassphrase);
+    });
+    ["#number-block-count", "#number-min-digits", "#number-max-digits"].forEach(id => {
+      $(id).addEventListener("input", event => {
+        const minimumInput = $("#number-min-digits");
+        const maximumInput = $("#number-max-digits");
+        let minimum = clampInteger(minimumInput.value, 1, 12);
+        let maximum = clampInteger(maximumInput.value, 1, 12);
+        if (minimum > maximum) {
+          if (event.target === minimumInput) maximum = minimum;
+          else minimum = maximum;
+        }
+        minimumInput.value = String(minimum);
+        maximumInput.value = String(maximum);
+        generatePassphrase();
+      });
+    });
+    document.querySelectorAll("[data-copy]").forEach(button => {
+      button.addEventListener("click", () => copyResult(button.dataset.copy));
+    });
+
+    $("#word-list-size").textContent = hungarianWords.length;
+    generatePassword();
+    generatePassphrase();
+  </script>
+</body>
+</html>
