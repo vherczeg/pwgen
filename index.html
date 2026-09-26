@@ -152,10 +152,10 @@
           <div class="advanced-body">
             <div class="number-settings two">
               <label class="number-field">Minimum számjegy
-                <input id="min-numbers" type="number" min="0" max="20" value="1" inputmode="numeric">
+                <input id="min-numbers" type="number" min="1" max="20" value="1" inputmode="numeric">
               </label>
               <label class="number-field">Minimum speciális jel
-                <input id="min-symbols" type="number" min="0" max="20" value="1" inputmode="numeric">
+                <input id="min-symbols" type="number" min="1" max="20" value="1" inputmode="numeric">
               </label>
             </div>
             <label class="number-field">Használható speciális karakterek
@@ -251,8 +251,8 @@
     const length=Number($("#password-length").value), g=passwordGroups();
     if (!g.lower.length || !g.upper.length) return;
     if (g.useSymbols && !g.symbols.length) { $("#password-result").textContent="Adj meg legalább egy speciális karaktert!"; showQuality(0,$("#password-bits"),$("#password-quality")); return; }
-    let minNumbers=g.useNumbers?clampInteger($("#min-numbers").value,0,20):0;
-    let minSymbols=g.useSymbols?clampInteger($("#min-symbols").value,0,20):0;
+    let minNumbers=g.useNumbers?clampInteger($("#min-numbers").value,1,20):0;
+    let minSymbols=g.useSymbols?clampInteger($("#min-symbols").value,1,20):0;
     $("#min-numbers").value=minNumbers; $("#min-symbols").value=minSymbols;
     const mandatory=2+minNumbers+minSymbols;
     if (mandatory>length) { $("#password-result").textContent=`A minimum karakterek száma (${mandatory}) nagyobb a jelszó hosszánál.`; showQuality(0,$("#password-bits"),$("#password-quality")); return; }
@@ -311,18 +311,42 @@
     }
   }
 
+  function syncPasswordMinimums() {
+    const numbersEnabled = $("#use-numbers").checked;
+    const symbolsEnabled = $("#use-symbols").checked;
+
+    $("#min-numbers").disabled = !numbersEnabled;
+    $("#min-symbols").disabled = !symbolsEnabled;
+
+    if (numbersEnabled) {
+      $("#min-numbers").min = "1";
+      $("#min-numbers").value = String(clampInteger($("#min-numbers").value, 1, 20));
+    } else {
+      $("#min-numbers").value = "0";
+    }
+
+    if (symbolsEnabled) {
+      $("#min-symbols").min = "1";
+      $("#min-symbols").value = String(clampInteger($("#min-symbols").value, 1, 20));
+    } else {
+      $("#min-symbols").value = "0";
+    }
+  }
+
   $("#password-tab").addEventListener("click",()=>switchTab("password"));
   $("#phrase-tab").addEventListener("click",()=>switchTab("phrase"));
   $("#generate-password").addEventListener("click",generatePassword);
   $("#generate-phrase").addEventListener("click",generatePassphrase);
   $("#password-length").addEventListener("input",e=>{$("#password-length-value").value=e.target.value;generatePassword();});
-  ["#use-numbers","#use-symbols","#avoid-ambiguous"].forEach(id=>$(id).addEventListener("change",generatePassword));
+  ["#use-numbers","#use-symbols"].forEach(id=>$(id).addEventListener("change",()=>{syncPasswordMinimums();generatePassword();}));
+  $("#avoid-ambiguous").addEventListener("change",generatePassword);
   ["#min-numbers","#min-symbols","#symbol-set"].forEach(id=>$(id).addEventListener("input",generatePassword));
   $("#word-count").addEventListener("input",e=>{$("#word-count-value").value=e.target.value;generatePassphrase();});
   ["#sep-space","#sep-dash","#sep-underscore","#sep-dot","#capitalize-words"].forEach(id=>$(id).addEventListener("change",generatePassphrase));
   ["#number-block-count","#number-min-digits","#number-max-digits"].forEach(id=>$(id).addEventListener("input",generatePassphrase));
   document.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",()=>copyResult(b.dataset.copy)));
 
+  syncPasswordMinimums();
   generatePassword();
   loadWordList();
   </script>
