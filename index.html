@@ -77,7 +77,7 @@
     .panel { padding:24px 30px 30px; }
     .panel[hidden] { display:none; }
     .result-wrap { display:grid; grid-template-columns:1fr auto auto; gap:10px; margin-bottom:20px; }
-    .result { min-width:0; min-height:70px; display:flex; align-items:center; padding:15px 17px; overflow-wrap:anywhere; border:1px solid var(--border); border-radius:14px; background:var(--surface); font:700 1.04rem/1.45 ui-monospace,SFMono-Regular,Consolas,monospace; letter-spacing:.02em; }
+    .result { min-width:0; min-height:104px; display:flex; align-items:center; padding:15px 17px; overflow-wrap:anywhere; border:1px solid var(--border); border-radius:14px; background:var(--surface); font:700 1.04rem/1.45 ui-monospace,SFMono-Regular,Consolas,monospace; letter-spacing:.02em; }
     .copy { width:86px; border:1px solid var(--border); border-radius:14px; color:var(--text); background:var(--surface); font-weight:750; cursor:pointer; }
     .copy:hover { background:var(--surface-strong); }
     .generate-inline { min-width:112px; padding:0 14px; border:0; border-radius:14px; color:white; background:var(--primary); font-weight:800; cursor:pointer; }
@@ -204,11 +204,11 @@
             <div class="field">
               <span class="legend">Véletlen számblokkok</span>
               <div class="number-settings">
-                <label class="number-field">Blokkok száma<input id="number-block-count" type="number" min="0" max="12" value="2" inputmode="numeric"></label>
-                <label class="number-field">Minimum számjegy<input id="number-min-digits" type="number" min="1" max="12" value="1" inputmode="numeric"></label>
-                <label class="number-field">Maximum számjegy<input id="number-max-digits" type="number" min="1" max="12" value="2" inputmode="numeric"></label>
+                <label class="number-field">Számblokkok száma<input id="number-block-count" type="number" min="0" max="10" value="2" inputmode="numeric"></label>
+                <label class="number-field">Min. számjegy / blokk<input id="number-min-digits" type="number" min="1" max="12" value="1" inputmode="numeric"></label>
+                <label class="number-field">Max. számjegy / blokk<input id="number-max-digits" type="number" min="1" max="12" value="2" inputmode="numeric"></label>
               </div>
-              <p class="help">Minden számblokk véletlenszerűen egy külön szó elejére vagy végére kerül.</p>
+              <p class="help">Legfeljebb egy számblokk kerül egy szóhoz. A kiválasztott szavaknál a blokk véletlenszerűen a szó elejére vagy végére kerül. Ha a blokkok száma 0, a számok ki vannak kapcsolva.</p>
             </div>
 
             <div class="field">
@@ -296,14 +296,23 @@
     const separators=[["#sep-space"," "],["#sep-dash","-"],["#sep-underscore","_"],["#sep-dot","."],["#sep-plus","+"],["#sep-none",""]].filter(([id])=>$(id).checked).map(([,v])=>v);
     const words=[];
     for(let i=0;i<count;i++) { let w=pick(hungarianWords); if(capitalize) w=w.charAt(0).toLocaleUpperCase("hu-HU")+w.slice(1); words.push(w); }
-    const slots=words.flatMap((_,wordIndex)=>[{wordIndex,side:"before"},{wordIndex,side:"after"}]);
-    const blocks=clampInteger($("#number-block-count").value,0,slots.length), minD=clampInteger($("#number-min-digits").value,1,12), maxD=clampInteger($("#number-max-digits").value,minD,12);
-    $("#number-block-count").max=slots.length; $("#number-block-count").value=blocks; $("#number-min-digits").value=minD; $("#number-max-digits").value=maxD;
-    for(const slot of secureShuffle(slots).slice(0,blocks)) { const digits=randomDigitString(minD+secureRandomInt(maxD-minD+1)); words[slot.wordIndex]=slot.side==="before"?digits+words[slot.wordIndex]:words[slot.wordIndex]+digits; }
+    const blocks=clampInteger($("#number-block-count").value,0,count), minD=clampInteger($("#number-min-digits").value,1,12), maxD=clampInteger($("#number-max-digits").value,minD,12);
+    $("#number-block-count").max=count; $("#number-block-count").value=blocks; $("#number-min-digits").value=minD; $("#number-max-digits").value=maxD;
+
+    const selectedWordIndexes=secureShuffle(Array.from({length:count},(_,i)=>i)).slice(0,blocks);
+    for(const wordIndex of selectedWordIndexes) {
+      const digits=randomDigitString(minD+secureRandomInt(maxD-minD+1));
+      const before=secureRandomInt(2)===0;
+      words[wordIndex]=before?digits+words[wordIndex]:words[wordIndex]+digits;
+    }
+
     let phrase=words[0]; for(let i=1;i<words.length;i++) phrase+=(separators.length?pick(separators):"")+words[i];
     let bits=count*Math.log2(hungarianWords.length);
     if(separators.length>1) bits+=(count-1)*Math.log2(separators.length);
-    if(blocks>0) { const lengths=maxD-minD+1, avg=(minD+maxD)/2; bits+=log2Combination(slots.length,blocks)+blocks*(Math.log2(lengths)+avg*Math.log2(10)); }
+    if(blocks>0) {
+      const lengths=maxD-minD+1, avg=(minD+maxD)/2;
+      bits+=log2Combination(count,blocks)+blocks*(1+Math.log2(lengths)+avg*Math.log2(10));
+    }
     $("#phrase-result").textContent=phrase; showQuality(bits,$("#phrase-bits"),$("#phrase-quality"));
   }
 
@@ -351,6 +360,31 @@
     }
   }
 
+  function syncPhraseNumberBlocks(changedInput=null) {
+    const wordCount=Number($("#word-count").value);
+    const blockInput=$("#number-block-count");
+    const minInput=$("#number-min-digits");
+    const maxInput=$("#number-max-digits");
+
+    blockInput.max=String(wordCount);
+    const blocks=clampInteger(blockInput.value,0,wordCount);
+    blockInput.value=String(blocks);
+
+    const enabled=blocks>0;
+    minInput.disabled=!enabled;
+    maxInput.disabled=!enabled;
+    if(!enabled) return;
+
+    let minimum=clampInteger(minInput.value,1,12);
+    let maximum=clampInteger(maxInput.value,1,12);
+    if(minimum>maximum){
+      if(changedInput===minInput) maximum=minimum;
+      else minimum=maximum;
+    }
+    minInput.value=String(minimum);
+    maxInput.value=String(maximum);
+  }
+
   $("#password-tab").addEventListener("click",()=>switchTab("password"));
   $("#phrase-tab").addEventListener("click",()=>switchTab("phrase"));
   $("#generate-password").addEventListener("click",generatePassword);
@@ -359,21 +393,15 @@
   ["#use-numbers","#use-symbols"].forEach(id=>$(id).addEventListener("change",syncPasswordMinimums));
   $("#avoid-ambiguous").addEventListener("change",()=>{});
   ["#min-numbers","#min-symbols","#symbol-set"].forEach(id=>$(id).addEventListener("input",()=>{}));
-  $("#word-count").addEventListener("input",e=>{$("#word-count-value").value=e.target.value;});
+  $("#word-count").addEventListener("input",e=>{$("#word-count-value").value=e.target.value;syncPhraseNumberBlocks();});
   ["#sep-space","#sep-dash","#sep-underscore","#sep-dot","#sep-plus","#sep-none","#capitalize-words"].forEach(id=>$(id).addEventListener("change",()=>{}));
   ["#number-block-count","#number-min-digits","#number-max-digits"].forEach(id=>$(id).addEventListener("input",event=>{
-    const minimumInput=$("#number-min-digits"), maximumInput=$("#number-max-digits");
-    let minimum=clampInteger(minimumInput.value,1,12), maximum=clampInteger(maximumInput.value,1,12);
-    if(minimum>maximum){
-      if(event.target===minimumInput) maximum=minimum;
-      else minimum=maximum;
-    }
-    minimumInput.value=String(minimum);
-    maximumInput.value=String(maximum);
+    syncPhraseNumberBlocks(event.target);
   }));
   document.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",()=>copyResult(b.dataset.copy)));
 
   syncPasswordMinimums();
+  syncPhraseNumberBlocks();
   switchTab("phrase");
   generatePassword();
   loadWordList();
