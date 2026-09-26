@@ -120,7 +120,7 @@
 <body>
   <main class="app">
     <header>
-      <h1>Jelszó- és jelmondat-generátor</h1>
+      <h1>Jelmondat és Jelszó Generátor</h1>
       <p class="lead">Minden véletlen választás helyben, a böngésző biztonságos véletlenszám-generátorával történik.</p>
     </header>
 
@@ -189,6 +189,10 @@
           <div class="checks">
             <label class="check"><input id="sep-space" type="checkbox" checked> Szóköz</label>
             <label class="check"><input id="sep-dash" type="checkbox"> Kötőjel (-)</label>
+            <label class="check"><input id="sep-underscore" type="checkbox"> Aláhúzásjel (_)</label>
+            <label class="check"><input id="sep-dot" type="checkbox"> Pont (.)</label>
+            <label class="check"><input id="sep-plus" type="checkbox"> Pluszjel (+)</label>
+            <label class="check"><input id="sep-none" type="checkbox"> Nincs elválasztó</label>
           </div>
         </div>
 
@@ -197,15 +201,6 @@
         <details>
           <summary>Speciális beállítások</summary>
           <div class="advanced-body">
-            <div class="field">
-              <span class="legend">További elválasztók</span>
-              <div class="checks">
-                <label class="check"><input id="sep-underscore" type="checkbox"> Aláhúzásjel (_)</label>
-                <label class="check"><input id="sep-dot" type="checkbox"> Pont (.)</label>
-              </div>
-              <p class="help">Ha több elválasztót jelölsz be, a generátor minden szó között véletlenszerűen választ közülük.</p>
-            </div>
-
             <div class="field">
               <span class="legend">Véletlen számblokkok</span>
               <div class="number-settings">
@@ -298,7 +293,7 @@
   function generatePassphrase() {
     if(!hungarianWords.length) return;
     const count=Number($("#word-count").value), capitalize=$("#capitalize-words").checked;
-    const separators=[["#sep-space"," "],["#sep-dash","-"],["#sep-underscore","_"],["#sep-dot","."]].filter(([id])=>$(id).checked).map(([,v])=>v);
+    const separators=[["#sep-space"," "],["#sep-dash","-"],["#sep-underscore","_"],["#sep-dot","."],["#sep-plus","+"],["#sep-none",""]].filter(([id])=>$(id).checked).map(([,v])=>v);
     const words=[];
     for(let i=0;i<count;i++) { let w=pick(hungarianWords); if(capitalize) w=w.charAt(0).toLocaleUpperCase("hu-HU")+w.slice(1); words.push(w); }
     const slots=words.flatMap((_,wordIndex)=>[{wordIndex,side:"before"},{wordIndex,side:"after"}]);
@@ -365,7 +360,7 @@
   $("#avoid-ambiguous").addEventListener("change",()=>{});
   ["#min-numbers","#min-symbols","#symbol-set"].forEach(id=>$(id).addEventListener("input",()=>{}));
   $("#word-count").addEventListener("input",e=>{$("#word-count-value").value=e.target.value;});
-  ["#sep-space","#sep-dash","#sep-underscore","#sep-dot","#capitalize-words"].forEach(id=>$(id).addEventListener("change",()=>{}));
+  ["#sep-space","#sep-dash","#sep-underscore","#sep-dot","#sep-plus","#sep-none","#capitalize-words"].forEach(id=>$(id).addEventListener("change",()=>{}));
   ["#number-block-count","#number-min-digits","#number-max-digits"].forEach(id=>$(id).addEventListener("input",event=>{
     const minimumInput=$("#number-min-digits"), maximumInput=$("#number-max-digits");
     let minimum=clampInteger(minimumInput.value,1,12), maximum=clampInteger(maximumInput.value,1,12);
