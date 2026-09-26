@@ -185,31 +185,51 @@
           <input id="word-count" type="range" min="2" max="10" value="3">
         </div>
         <div class="field">
-          <span class="legend">Lehetséges elválasztók</span>
+          <span class="legend">Elválasztó</span>
           <div class="checks">
             <label class="check"><input id="sep-space" type="checkbox" checked> Szóköz</label>
             <label class="check"><input id="sep-dash" type="checkbox"> Kötőjel (-)</label>
-            <label class="check"><input id="sep-underscore" type="checkbox"> Aláhúzásjel (_)</label>
-            <label class="check"><input id="sep-dot" type="checkbox"> Pont (.)</label>
           </div>
-          <p class="help">Minden szóköznél véletlenszerűen választ a bejelölt jelek közül.</p>
         </div>
-        <div class="field">
-          <span class="legend">Véletlen számblokkok</span>
-          <div class="number-settings">
-            <label class="number-field">Blokkok száma<input id="number-block-count" type="number" min="0" max="12" value="2" inputmode="numeric"></label>
-            <label class="number-field">Minimum számjegy<input id="number-min-digits" type="number" min="1" max="12" value="1" inputmode="numeric"></label>
-            <label class="number-field">Maximum számjegy<input id="number-max-digits" type="number" min="1" max="12" value="2" inputmode="numeric"></label>
-          </div>
-          <p class="help">Minden számblokk véletlenszerűen egy külön szó elejére vagy végére kerül.</p>
-        </div>
-        <div class="field">
-          <span class="legend">Formázás</span>
-          <div class="checks"><label class="check"><input id="capitalize-words" type="checkbox"> Szavak nagy kezdőbetűvel</label></div>
-        </div>
+
         <div class="status"><span id="phrase-bits"></span><span class="quality" id="phrase-quality"></span></div>
+
+        <details>
+          <summary>Speciális beállítások</summary>
+          <div class="advanced-body">
+            <div class="field">
+              <span class="legend">További elválasztók</span>
+              <div class="checks">
+                <label class="check"><input id="sep-underscore" type="checkbox"> Aláhúzásjel (_)</label>
+                <label class="check"><input id="sep-dot" type="checkbox"> Pont (.)</label>
+              </div>
+              <p class="help">Ha több elválasztót jelölsz be, a generátor minden szó között véletlenszerűen választ közülük.</p>
+            </div>
+
+            <div class="field">
+              <span class="legend">Véletlen számblokkok</span>
+              <div class="number-settings">
+                <label class="number-field">Blokkok száma<input id="number-block-count" type="number" min="0" max="12" value="2" inputmode="numeric"></label>
+                <label class="number-field">Minimum számjegy<input id="number-min-digits" type="number" min="1" max="12" value="1" inputmode="numeric"></label>
+                <label class="number-field">Maximum számjegy<input id="number-max-digits" type="number" min="1" max="12" value="2" inputmode="numeric"></label>
+              </div>
+              <p class="help">Minden számblokk véletlenszerűen egy külön szó elejére vagy végére kerül.</p>
+            </div>
+
+            <div class="field">
+              <span class="legend">Formázás</span>
+              <div class="checks"><label class="check"><input id="capitalize-words" type="checkbox"> Szavak nagy kezdőbetűvel</label></div>
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary>ⓘ Hogyan működik?</summary>
+          <div class="advanced-body">
+            <p class="help"><strong>Magyar szólista:</strong> a generátor <span id="word-list-size">…</span> gyakoriság alapján kiválasztott, egyedi szót használ. A választás minden alkalommal helyben, kriptográfiailag biztonságos véletlennel történik.</p>
+          </div>
+        </details>
       </div>
-      <p class="note"><strong>Magyar szólista:</strong> a generátor <span id="word-list-size">…</span> gyakoriság alapján kiválasztott, egyedi szót használ. A választás minden alkalommal helyben, kriptográfiailag biztonságos véletlennel történik.</p>
     </section>
 
     <section class="seo-copy" aria-label="A generátorról">
