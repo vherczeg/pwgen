@@ -125,11 +125,11 @@
     </header>
 
     <div class="tabs" role="tablist" aria-label="Generátor típusa">
-      <button class="tab" id="password-tab" role="tab" aria-controls="password-panel" aria-selected="true">Jelszó</button>
-      <button class="tab" id="phrase-tab" role="tab" aria-controls="phrase-panel" aria-selected="false">Jelmondat</button>
+      <button class="tab" id="phrase-tab" role="tab" aria-controls="phrase-panel" aria-selected="true">Jelmondat</button>
+      <button class="tab" id="password-tab" role="tab" aria-controls="password-panel" aria-selected="false">Jelszó</button>
     </div>
 
-    <section class="panel" id="password-panel" role="tabpanel" aria-labelledby="password-tab">
+    <section class="panel" id="password-panel" role="tabpanel" aria-labelledby="password-tab" hidden>
       <div class="result-wrap">
         <div class="result" id="password-result" aria-live="polite"></div>
         <button class="copy" type="button" data-copy="password-result">Másolás</button>
@@ -173,7 +173,7 @@
       </div>
     </section>
 
-    <section class="panel" id="phrase-panel" role="tabpanel" aria-labelledby="phrase-tab" hidden>
+    <section class="panel" id="phrase-panel" role="tabpanel" aria-labelledby="phrase-tab">
       <div class="result-wrap">
         <div class="result" id="phrase-result" aria-live="polite">Szólista betöltése…</div>
         <button class="copy" type="button" data-copy="phrase-result">Másolás</button>
@@ -360,16 +360,26 @@
   $("#phrase-tab").addEventListener("click",()=>switchTab("phrase"));
   $("#generate-password").addEventListener("click",generatePassword);
   $("#generate-phrase").addEventListener("click",generatePassphrase);
-  $("#password-length").addEventListener("input",e=>{$("#password-length-value").value=e.target.value;generatePassword();});
-  ["#use-numbers","#use-symbols"].forEach(id=>$(id).addEventListener("change",()=>{syncPasswordMinimums();generatePassword();}));
-  $("#avoid-ambiguous").addEventListener("change",generatePassword);
-  ["#min-numbers","#min-symbols","#symbol-set"].forEach(id=>$(id).addEventListener("input",generatePassword));
-  $("#word-count").addEventListener("input",e=>{$("#word-count-value").value=e.target.value;generatePassphrase();});
-  ["#sep-space","#sep-dash","#sep-underscore","#sep-dot","#capitalize-words"].forEach(id=>$(id).addEventListener("change",generatePassphrase));
-  ["#number-block-count","#number-min-digits","#number-max-digits"].forEach(id=>$(id).addEventListener("input",generatePassphrase));
+  $("#password-length").addEventListener("input",e=>{$("#password-length-value").value=e.target.value;});
+  ["#use-numbers","#use-symbols"].forEach(id=>$(id).addEventListener("change",syncPasswordMinimums));
+  $("#avoid-ambiguous").addEventListener("change",()=>{});
+  ["#min-numbers","#min-symbols","#symbol-set"].forEach(id=>$(id).addEventListener("input",()=>{}));
+  $("#word-count").addEventListener("input",e=>{$("#word-count-value").value=e.target.value;});
+  ["#sep-space","#sep-dash","#sep-underscore","#sep-dot","#capitalize-words"].forEach(id=>$(id).addEventListener("change",()=>{}));
+  ["#number-block-count","#number-min-digits","#number-max-digits"].forEach(id=>$(id).addEventListener("input",event=>{
+    const minimumInput=$("#number-min-digits"), maximumInput=$("#number-max-digits");
+    let minimum=clampInteger(minimumInput.value,1,12), maximum=clampInteger(maximumInput.value,1,12);
+    if(minimum>maximum){
+      if(event.target===minimumInput) maximum=minimum;
+      else minimum=maximum;
+    }
+    minimumInput.value=String(minimum);
+    maximumInput.value=String(maximum);
+  }));
   document.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",()=>copyResult(b.dataset.copy)));
 
   syncPasswordMinimums();
+  switchTab("phrase");
   generatePassword();
   loadWordList();
   </script>
