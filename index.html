@@ -290,14 +290,42 @@
 
   function log2Combination(n,k) { if(k<0||k>n)return -Infinity; k=Math.min(k,n-k); let r=0; for(let i=1;i<=k;i++) r+=Math.log2(n-k+i)-Math.log2(i); return r; }
   function randomDigitString(length) { let s=""; for(let i=0;i<length;i++) s+=String(secureRandomInt(10)); return s; }
-  function generatePassphrase() {
+
+  let currentPhraseWords = [];
+
+  function buildNewPhraseWordPool() {
     if(!hungarianWords.length) return;
-    const count=Number($("#word-count").value), capitalize=$("#capitalize-words").checked;
-    const separators=[["#sep-space"," "],["#sep-dash","-"],["#sep-underscore","_"],["#sep-dot","."],["#sep-plus","+"],["#sep-none",""]].filter(([id])=>$(id).checked).map(([,v])=>v);
-    const words=[];
-    for(let i=0;i<count;i++) { let w=pick(hungarianWords); if(capitalize) w=w.charAt(0).toLocaleUpperCase("hu-HU")+w.slice(1); words.push(w); }
-    const blocks=clampInteger($("#number-block-count").value,0,count), minD=clampInteger($("#number-min-digits").value,1,12), maxD=clampInteger($("#number-max-digits").value,minD,12);
-    $("#number-block-count").max=count; $("#number-block-count").value=blocks; $("#number-min-digits").value=minD; $("#number-max-digits").value=maxD;
+    const maxWords=Number($("#word-count").max) || 10;
+    currentPhraseWords=Array.from({length:maxWords},()=>pick(hungarianWords));
+  }
+
+  function renderPassphrase() {
+    if(!hungarianWords.length || !currentPhraseWords.length) return;
+
+    const count=Number($("#word-count").value);
+    const capitalize=$("#capitalize-words").checked;
+    const separators=[
+      ["#sep-space"," "],
+      ["#sep-dash","-"],
+      ["#sep-underscore","_"],
+      ["#sep-dot","."],
+      ["#sep-plus","+"],
+      ["#sep-none",""]
+    ].filter(([id])=>$(id).checked).map(([,v])=>v);
+
+    const words=currentPhraseWords.slice(0,count).map(word=>{
+      if(!capitalize) return word;
+      return word.charAt(0).toLocaleUpperCase("hu-HU")+word.slice(1);
+    });
+
+    const blocks=clampInteger($("#number-block-count").value,0,count);
+    const minD=clampInteger($("#number-min-digits").value,1,12);
+    const maxD=clampInteger($("#number-max-digits").value,minD,12);
+
+    $("#number-block-count").max=String(count);
+    $("#number-block-count").value=String(blocks);
+    $("#number-min-digits").value=String(minD);
+    $("#number-max-digits").value=String(maxD);
 
     const selectedWordIndexes=secureShuffle(Array.from({length:count},(_,i)=>i)).slice(0,blocks);
     for(const wordIndex of selectedWordIndexes) {
@@ -306,14 +334,26 @@
       words[wordIndex]=before?digits+words[wordIndex]:words[wordIndex]+digits;
     }
 
-    let phrase=words[0]; for(let i=1;i<words.length;i++) phrase+=(separators.length?pick(separators):"")+words[i];
+    let phrase=words[0] ?? "";
+    for(let i=1;i<words.length;i++) {
+      phrase+=(separators.length?pick(separators):"")+words[i];
+    }
+
     let bits=count*Math.log2(hungarianWords.length);
     if(separators.length>1) bits+=(count-1)*Math.log2(separators.length);
     if(blocks>0) {
       const lengths=maxD-minD+1, avg=(minD+maxD)/2;
       bits+=log2Combination(count,blocks)+blocks*(1+Math.log2(lengths)+avg*Math.log2(10));
     }
-    $("#phrase-result").textContent=phrase; showQuality(bits,$("#phrase-bits"),$("#phrase-quality"));
+
+    $("#phrase-result").textContent=phrase;
+    showQuality(bits,$("#phrase-bits"),$("#phrase-quality"));
+  }
+
+  function generatePassphrase() {
+    if(!hungarianWords.length) return;
+    buildNewPhraseWordPool();
+    renderPassphrase();
   }
 
   function switchTab(name) { const p=name==="password"; $("#password-tab").setAttribute("aria-selected",p); $("#phrase-tab").setAttribute("aria-selected",!p); $("#password-panel").hidden=!p; $("#phrase-panel").hidden=p; }
@@ -393,10 +433,17 @@
   ["#use-numbers","#use-symbols"].forEach(id=>$(id).addEventListener("change",syncPasswordMinimums));
   $("#avoid-ambiguous").addEventListener("change",()=>{});
   ["#min-numbers","#min-symbols","#symbol-set"].forEach(id=>$(id).addEventListener("input",()=>{}));
-  $("#word-count").addEventListener("input",e=>{$("#word-count-value").value=e.target.value;syncPhraseNumberBlocks();});
-  ["#sep-space","#sep-dash","#sep-underscore","#sep-dot","#sep-plus","#sep-none","#capitalize-words"].forEach(id=>$(id).addEventListener("change",()=>{}));
+  $("#word-count").addEventListener("input",e=>{
+    $("#word-count-value").value=e.target.value;
+    syncPhraseNumberBlocks();
+    renderPassphrase();
+  });
+  ["#sep-space","#sep-dash","#sep-underscore","#sep-dot","#sep-plus","#sep-none","#capitalize-words"].forEach(id=>{
+    $(id).addEventListener("change",renderPassphrase);
+  });
   ["#number-block-count","#number-min-digits","#number-max-digits"].forEach(id=>$(id).addEventListener("input",event=>{
     syncPhraseNumberBlocks(event.target);
+    renderPassphrase();
   }));
   document.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",()=>copyResult(b.dataset.copy)));
 
