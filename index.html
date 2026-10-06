@@ -93,6 +93,13 @@
     .checks { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
     .check { display:flex; align-items:center; gap:9px; min-height:46px; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:var(--surface); cursor:pointer; }
     .check input { width:18px; height:18px; accent-color:var(--primary); }
+    .sep-buttons { display:flex; flex-wrap:wrap; gap:6px; }
+    .sep-btn { min-width:38px; min-height:38px; padding:0 10px; border:1px solid var(--border); border-radius:10px; color:var(--muted); background:var(--surface); font-weight:750; cursor:pointer; }
+    .sep-btn:hover { background:var(--surface-strong); }
+    .sep-btn.active { color:var(--text); border-color:color-mix(in srgb,var(--primary) 45%,var(--border)); background:color-mix(in srgb,var(--primary) 12%,var(--surface)); box-shadow:0 2px 8px color-mix(in srgb,var(--primary) 18%,transparent); }
+    .sep-btn:focus-visible { outline:2px solid var(--primary); outline-offset:2px; }
+    .sep-field { display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-weight:750; }
+    .sep-field .text-input { flex:1 1 140px; width:auto; min-width:110px; font:700 1rem ui-monospace,SFMono-Regular,Consolas,monospace; }
     .number-settings { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
     .number-settings.two { grid-template-columns:repeat(2,minmax(0,1fr)); }
     .number-field { display:grid; gap:7px; padding:11px 12px; border:1px solid var(--border); border-radius:12px; background:var(--surface); font-size:.82rem; font-weight:750; }
@@ -113,7 +120,7 @@
     .toast { position:fixed; left:50%; bottom:24px; z-index:10; transform:translate(-50%,20px); padding:10px 16px; border-radius:999px; color:white; background:#152039; box-shadow:0 10px 25px rgba(0,0,0,.22); opacity:0; pointer-events:none; transition:.2s ease; }
     .toast.show { transform:translate(-50%,0); opacity:1; }
     @media (max-width:560px) {
-      body { padding:0; place-items:stretch; } .app { min-height:100vh; border-radius:0; } header { padding:24px 20px 16px; } .tabs { margin:0 20px; } .panel { padding:20px; } .checks,.number-settings,.number-settings.two { grid-template-columns:1fr; } .result-wrap { grid-template-columns:1fr 1fr; } .result { grid-column:1 / -1; } .copy,.generate-inline { width:100%; min-height:44px; } .seo-copy { padding:0 20px 24px; }
+      body { padding:0; place-items:stretch; } .app { min-height:100vh; border-radius:0; } header { padding:24px 20px 16px; } .tabs { margin:0 20px; } .panel { padding:20px; } .checks,.number-settings,.number-settings.two { grid-template-columns:1fr; } .result-wrap { grid-template-columns:1fr 1fr; } .result { grid-column:1 / -1; } .copy,.generate-inline { width:100%; min-height:44px; } .seo-copy { padding:0 20px 24px; } .sep-btn { min-height:36px; padding:0 9px; }
     }
   </style>
 </head>
@@ -185,15 +192,25 @@
           <input id="word-count" type="range" min="2" max="10" value="3">
         </div>
         <div class="field">
-          <span class="legend">Elválasztó</span>
-          <div class="checks">
-            <label class="check"><input id="sep-space" type="checkbox" checked> Szóköz</label>
-            <label class="check"><input id="sep-dash" type="checkbox"> Kötőjel (-)</label>
-            <label class="check"><input id="sep-underscore" type="checkbox"> Aláhúzásjel (_)</label>
-            <label class="check"><input id="sep-dot" type="checkbox"> Pont (.)</label>
-            <label class="check"><input id="sep-plus" type="checkbox"> Pluszjel (+)</label>
-            <label class="check"><input id="sep-none" type="checkbox"> Nincs elválasztó</label>
+          <div class="sep-buttons" role="group" aria-label="Gyakori elválasztó karakterek">
+            <button type="button" class="sep-btn" data-sep="-" aria-pressed="false">-</button>
+            <button type="button" class="sep-btn" data-sep="_" aria-pressed="false">_</button>
+            <button type="button" class="sep-btn" data-sep="+" aria-pressed="false">+</button>
+            <button type="button" class="sep-btn" data-sep="." aria-pressed="false">.</button>
+            <button type="button" class="sep-btn" data-sep="(" aria-pressed="false">(</button>
+            <button type="button" class="sep-btn" data-sep=")" aria-pressed="false">)</button>
+            <button type="button" class="sep-btn" data-sep=" " aria-pressed="false">Szóköz</button>
+            <button type="button" class="sep-btn" data-sep="=" aria-pressed="false">=</button>
+            <button type="button" class="sep-btn" data-sep="/" aria-pressed="false">/</button>
+            <button type="button" class="sep-btn" data-sep="%" aria-pressed="false">%</button>
+            <button type="button" class="sep-btn" data-sep="!" aria-pressed="false">!</button>
+            <button type="button" class="sep-btn" data-sep="?" aria-pressed="false">?</button>
           </div>
+          <label class="sep-field" for="separator-chars">
+            Elválasztó karakterek:
+            <input id="separator-chars" class="text-input" type="text" value=" " spellcheck="false" autocomplete="off" aria-describedby="separator-help">
+          </label>
+          <p class="help" id="separator-help">A mező karakterei közül minden szóhatáron külön, véletlenszerűen választ. Üres mező esetén nincs elválasztó.</p>
         </div>
 
         <div class="status"><span id="phrase-bits"></span><span class="quality" id="phrase-quality"></span></div>
@@ -296,31 +313,53 @@
 
   let currentPhraseWords = [];
 
+  // Az "Elválasztó karakterek" mező az egyetlen forrás; a gombok csak szerkesztik azt.
+  function separatorCharacterSet() {
+    return [...new Set([...$("#separator-chars").value])];
+  }
+
+  function normalizeSeparatorField() {
+    const input=$("#separator-chars");
+    const raw=input.value, unique=[...new Set([...raw])].join("");
+    if(unique===raw) return;
+    const caretFromEnd=raw.length-(input.selectionStart ?? raw.length);
+    input.value=unique;
+    const position=Math.max(0,unique.length-caretFromEnd);
+    if(input.setSelectionRange) input.setSelectionRange(position,position);
+  }
+
+  function syncSeparatorButtons() {
+    const chars=separatorCharacterSet();
+    document.querySelectorAll(".sep-btn").forEach(button=>{
+      const active=chars.includes(button.dataset.sep);
+      button.classList.toggle("active",active);
+      button.setAttribute("aria-pressed",active?"true":"false");
+    });
+  }
+
+  function toggleSeparatorChar(char) {
+    const input=$("#separator-chars");
+    const chars=[...input.value], index=chars.indexOf(char);
+    if(index===-1) input.value+=char;
+    else { chars.splice(index,1); input.value=chars.join(""); }
+    if(input.setSelectionRange) input.setSelectionRange(input.value.length,input.value.length);
+    syncSeparatorButtons();
+    renderPassphrase();
+  }
+
   function buildNewPhraseWordPool() {
     if(!hungarianWords.length) return;
     const maxWords=Number($("#word-count").max) || 10;
     currentPhraseWords=Array.from({length:maxWords},()=>pick(hungarianWords));
   }
 
-  function renderPassphrase() {
+  let currentPhraseParts = null;
+
+  // Új véletlen tartalmat készít: szavak + számblokkok (érték és pozíció).
+  function buildPhraseParts() {
     if(!hungarianWords.length || !currentPhraseWords.length) return;
 
     const count=Number($("#word-count").value);
-    const capitalize=$("#capitalize-words").checked;
-    const separators=[
-      ["#sep-space"," "],
-      ["#sep-dash","-"],
-      ["#sep-underscore","_"],
-      ["#sep-dot","."],
-      ["#sep-plus","+"],
-      ["#sep-none",""]
-    ].filter(([id])=>$(id).checked).map(([,v])=>v);
-
-    const words=currentPhraseWords.slice(0,count).map(word=>{
-      if(!capitalize) return word;
-      return word.charAt(0).toLocaleUpperCase("hu-HU")+word.slice(1);
-    });
-
     const blocks=clampInteger($("#number-block-count").value,0,count);
     const minD=clampInteger($("#number-min-digits").value,1,12);
     const maxD=clampInteger($("#number-max-digits").value,minD,12);
@@ -330,24 +369,44 @@
     $("#number-min-digits").value=String(minD);
     $("#number-max-digits").value=String(maxD);
 
+    const words=currentPhraseWords.slice(0,count).map(word=>({word,digits:"",side:"after"}));
     const selectedWordIndexes=secureShuffle(Array.from({length:count},(_,i)=>i)).slice(0,blocks);
     for(const wordIndex of selectedWordIndexes) {
-      const digits=randomDigitString(minD+secureRandomInt(maxD-minD+1));
-      const before=secureRandomInt(2)===0;
-      words[wordIndex]=before?digits+words[wordIndex]:words[wordIndex]+digits;
-    }
-
-    let phrase=words[0] ?? "";
-    for(let i=1;i<words.length;i++) {
-      phrase+=(separators.length?pick(separators):"")+words[i];
+      words[wordIndex].digits=randomDigitString(minD+secureRandomInt(maxD-minD+1));
+      words[wordIndex].side=secureRandomInt(2)===0?"before":"after";
     }
 
     let bits=count*Math.log2(hungarianWords.length);
-    if(separators.length>1) bits+=(count-1)*Math.log2(separators.length);
     if(blocks>0) {
       const lengths=maxD-minD+1, avg=(minD+maxD)/2;
       bits+=log2Combination(count,blocks)+blocks*(1+Math.log2(lengths)+avg*Math.log2(10));
     }
+
+    currentPhraseParts={words,baseBits:bits};
+    renderPassphrase();
+  }
+
+  // Csak megjelenít: a meglévő szavakat/számblokkokat fűzi össze az aktuális elválasztókkal,
+  // új véletlen tartalmat (szót, számot, pozíciót) nem készít.
+  function renderPassphrase() {
+    if(!currentPhraseParts) return;
+
+    const capitalize=$("#capitalize-words").checked;
+    const separators=separatorCharacterSet();
+
+    const parts=currentPhraseParts.words.map(({word,digits,side})=>{
+      const text=capitalize?word.charAt(0).toLocaleUpperCase("hu-HU")+word.slice(1):word;
+      return side==="before"?digits+text:text+digits;
+    });
+
+    let phrase=parts[0] ?? "";
+    for(let i=1;i<parts.length;i++) {
+      phrase+=(separators.length?pick(separators):"")+parts[i];
+    }
+
+    let bits=currentPhraseParts.baseBits;
+    // Minden szóhatáron külön, véletlenszerű választás történik a karakterkészletből.
+    if(separators.length>1) bits+=(parts.length-1)*Math.log2(separators.length);
 
     $("#phrase-result").textContent=phrase;
     showQuality(bits,$("#phrase-bits"),$("#phrase-quality"));
@@ -356,7 +415,7 @@
   function generatePassphrase() {
     if(!hungarianWords.length) return;
     buildNewPhraseWordPool();
-    renderPassphrase();
+    buildPhraseParts();
   }
 
   function switchTab(name) { const p=name==="password"; $("#password-tab").setAttribute("aria-selected",p); $("#phrase-tab").setAttribute("aria-selected",!p); $("#password-panel").hidden=!p; $("#phrase-panel").hidden=p; }
@@ -438,19 +497,26 @@
   $("#word-count").addEventListener("input",e=>{
     $("#word-count-value").value=e.target.value;
     syncPhraseNumberBlocks();
+    buildPhraseParts();
+  });
+  document.querySelectorAll(".sep-btn").forEach(button=>{
+    button.addEventListener("click",()=>toggleSeparatorChar(button.dataset.sep));
+  });
+  $("#separator-chars").addEventListener("input",()=>{
+    normalizeSeparatorField();
+    syncSeparatorButtons();
     renderPassphrase();
   });
-  ["#sep-space","#sep-dash","#sep-underscore","#sep-dot","#sep-plus","#sep-none","#capitalize-words"].forEach(id=>{
-    $(id).addEventListener("change",renderPassphrase);
-  });
+  $("#capitalize-words").addEventListener("change",renderPassphrase);
   ["#number-block-count","#number-min-digits","#number-max-digits"].forEach(id=>$(id).addEventListener("input",event=>{
     syncPhraseNumberBlocks(event.target);
-    renderPassphrase();
+    buildPhraseParts();
   }));
   document.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",()=>copyResult(b.dataset.copy)));
 
   syncPasswordMinimums();
   syncPhraseNumberBlocks();
+  syncSeparatorButtons();
   switchTab("phrase");
   generatePassword();
   loadWordList();
