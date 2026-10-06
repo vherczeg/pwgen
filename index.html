@@ -124,7 +124,12 @@
     .number-field { display:grid; gap:7px; padding:11px 12px; border:1px solid var(--border); border-radius:12px; background:var(--surface); font-size:.82rem; font-weight:750; }
     .number-field input,.text-input { width:100%; min-height:40px; padding:6px 10px; border:1px solid var(--border); border-radius:9px; color:var(--text); background:var(--card); font-weight:700; }
     details { border:1px solid var(--border); border-radius:12px; background:var(--surface); overflow:hidden; }
-    summary { cursor:pointer; padding:12px 14px; font-weight:800; user-select:none; }
+    summary { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 12px; list-style:none; cursor:pointer; padding:12px 14px; font-weight:800; user-select:none; }
+    summary::-webkit-details-marker { display:none; }
+    summary::before { content:"▸"; flex:none; color:var(--muted); font-weight:700; }
+    details[open] > summary::before { content:"▾"; }
+    .acc-title { min-width:0; }
+    .acc-value { margin-left:auto; color:var(--muted); font-weight:600; font-size:.86rem; text-align:right; overflow-wrap:anywhere; }
     .advanced-body { display:grid; gap:14px; padding:0 14px 14px; }
     .generate { min-height:50px; border:0; border-radius:13px; color:white; background:var(--primary); font-weight:800; cursor:pointer; box-shadow:0 10px 24px color-mix(in srgb,var(--primary) 25%,transparent); }
     .generate:hover { background:var(--primary-hover); }
@@ -237,11 +242,10 @@
           <p class="help" id="separator-help">A mező karakterei közül minden szóhatáron külön, véletlenszerűen választ. Üres mező esetén nincs elválasztó. A „123” a véletlen számjegy elválasztó; önálló számjegy nem használható.</p>
         </div>
 
-        <details>
-          <summary>Speciális beállítások</summary>
+        <details class="acc" id="acc-numbers">
+          <summary><span class="acc-title">Garantált számok</span><span class="acc-value" id="summary-numbers">1 szám</span></summary>
           <div class="advanced-body">
             <div class="field">
-              <span class="legend">Garantált számok</span>
               <div class="choices">
                 <label class="check"><input type="radio" name="number-preset" value="none"> Nincs</label>
                 <label class="check"><input type="radio" name="number-preset" value="one" checked> 1 szám</label>
@@ -258,9 +262,13 @@
                 <p class="help">Legfeljebb egy blokk kerül egy szóhoz, a szó elejére vagy végére.</p>
               </div>
             </div>
+          </div>
+        </details>
 
+        <details class="acc" id="acc-capital">
+          <summary><span class="acc-title">Nagybetűzés</span><span class="acc-value" id="summary-capital">Egy véletlen szó</span></summary>
+          <div class="advanced-body">
             <div class="field">
-              <span class="legend">Nagybetűzés</span>
               <div class="choices">
                 <label class="check"><input type="radio" name="capital-mode" value="none"> Nincs</label>
                 <label class="check"><input type="radio" name="capital-mode" value="all"> Minden szó</label>
@@ -268,9 +276,13 @@
                 <label class="check"><input type="radio" name="capital-mode" value="oneUpper"> Egy véletlen szó CSUPA NAGYBETŰ</label>
               </div>
             </div>
+          </div>
+        </details>
 
+        <details class="acc" id="acc-website">
+          <summary><span class="acc-title">Weboldal követelményei</span><span class="acc-value" id="summary-website">Nincs</span></summary>
+          <div class="advanced-body">
             <div class="field">
-              <span class="legend">Weboldal követelményei</span>
               <label class="legend">Maximális hossz</label>
               <div class="choices row">
                 <label class="check"><input type="radio" name="max-length" value="none" checked> Nincs</label>
@@ -629,6 +641,35 @@
     element.textContent=reasons.length?reasons.join("\n"):"✓ Minden jelölt megfelel a megadott követelményeknek.";
   }
 
+  // A harmonikák összecsukott összefoglalói (csak megjelenítés, nem generál semmit).
+  const CAPITAL_MODE_LABELS={none:"Nincs",all:"Minden szó",one:"Egy véletlen szó",oneUpper:"Egy véletlen szó CSUPA NAGYBETŰ"};
+  const NUMBER_PRESET_LABELS={none:"Nincs",one:"1 szám",two:"2 szám"};
+
+  function updateSettingSummaries() {
+    const preset=numberPreset();
+    if(preset==="custom") {
+      const blocks=clampInteger($("#number-block-count").value,0,10);
+      const minD=clampInteger($("#number-min-digits").value,1,12);
+      const maxD=clampInteger($("#number-max-digits").value,minD,12);
+      $("#summary-numbers").textContent=blocks===0
+        ?"Egyéni · nincs blokk"
+        :`Egyéni · ${blocks} blokk · ${minD===maxD?minD:minD+"–"+maxD} számjegy`;
+    } else {
+      $("#summary-numbers").textContent=NUMBER_PRESET_LABELS[preset] ?? "Nincs";
+    }
+
+    $("#summary-capital").textContent=CAPITAL_MODE_LABELS[capitalMode()] ?? "Nincs";
+
+    const parts=[];
+    const max=activeMaxLength();
+    if(max!==null) parts.push(`Max. ${max}`);
+    if($("#require-upper").checked) parts.push("Nagybetű");
+    if($("#require-digit").checked) parts.push("Szám");
+    if($("#require-special").checked) parts.push("Speciális");
+    if($("#forbid-space").checked) parts.push("Nincs szóköz");
+    $("#summary-website").textContent=parts.length?parts.join(" · "):"Nincs";
+  }
+
   // A státusz-oszlop: entrópia · hossz / minőség / weboldal-kompatibilitás.
   function updateCandidateStatus(index,phrase) {
     const candidate=phraseCandidates[index], row=candidateRows[index];
@@ -785,6 +826,7 @@
 
   // Minden jelölt újrarajzolása (elválasztó- vagy nagybetű-változás).
   function renderCandidates() {
+    updateSettingSummaries();
     if(!phraseCandidates.length) return;
     ensureCandidateRows(phraseCandidates.length);
     phraseCandidates.forEach((_,index)=>renderCandidate(index));
@@ -908,6 +950,18 @@
   ["#require-upper","#require-digit","#require-special","#forbid-space"].forEach(id=>{
     $(id).addEventListener("change",renderCandidates);   // csak újraszámol, nem generál
   });
+  // Exkluzív harmonika: egyszerre csak EGY beállítás-szekció lehet nyitva (csak megjelenítés).
+  const ACCORDION_SECTIONS=["#acc-numbers","#acc-capital","#acc-website"];
+  ACCORDION_SECTIONS.forEach(selector=>{
+    const section=$(selector);
+    section.addEventListener("toggle",()=>{
+      if(!section.open) return;
+      ACCORDION_SECTIONS.forEach(other=>{
+        const element=$(other);
+        if(element!==section && element.open) element.open=false;
+      });
+    });
+  });
   $("#separator-chars").addEventListener("input",()=>{
     normalizeSeparatorField();
     syncSeparatorButtons();
@@ -932,6 +986,7 @@
   syncNumberPresetRow();
   syncMaxLengthRow();
   updateLengthWarning();
+  updateSettingSummaries();
   syncPasswordMinimums();
   syncPhraseNumberBlocks();
   syncSeparatorButtons();
