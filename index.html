@@ -960,7 +960,7 @@
       const list=window.HU_WORDS;
       if(!list || !list.length) throw new Error("A lang/hun.js nem töltődött be (window.HU_WORDS hiányzik).");
       hungarianWords=(Array.isArray(list)?list:String(list).split(/\r?\n/)).map(s=>String(s).trim()).filter(Boolean);
-      if(hungarianWords.length!==7776) console.warn(`A szólista ${hungarianWords.length} sort tartalmaz, nem 7776-ot.`);
+      if(hungarianWords.length!==16384) console.warn(`A szólista ${hungarianWords.length} sort tartalmaz, nem 16384-et.`);
       $("#word-list-size").textContent=hungarianWords.length.toLocaleString("hu-HU");
       $("#generate-phrase").disabled=false;
       generatePassphrase();

@@ -1,0 +1,88 @@
+MAGYAR JELMONDAT-SZÓLISTA – STAGE 2 FORRÁSOK ÉS LICENCEK
+========================================================
+
+Ez a könyvtár a Stage-2 gyakorisági rangsorolás kimenete. A produkciós
+szólista (lang/hun.js) és a generátor (index.html) NEM változott.
+
+
+1. Gyakorisági adat (elsődleges rangsorolási jel)
+   Péter Rácz (2025): "Word frequency list from the Hungarian Webcorpus"
+   (a Magyar Webkorpusz 2 / Nemeskey 2020 alapján)
+   Verzió: v1.0
+   Licenc: CC BY 4.0
+   Zenodo DOI: 10.5281/zenodo.17508385
+   GitHub: https://github.com/petyaracz/Webcorpus2FrequencyList
+   Letöltött fájl: frequencies.parquet
+   Méret: 615 574 095 byte
+   Sorok: 36 936 726
+   Oszlopok: form, lemma, xpostag, freq, corpus_size, lemma_freq,
+             lfpm10, llfpm10, form_length, form_syl_count,
+             lemma_length, lemma_syl_count, hunspell
+
+   A nyers Webkorpusz 2 (83–511 GB CoNLL-U) NEM lett letöltve és nem is
+   szükséges ehhez az elemzéshez.
+
+   A parquet-ből a tools/extract_frequency_table.py készítette a
+   frequency_webcorpus2.tsv szűkített, egy-sor-per-jelölt táblát
+   (csak a Stage-1 jelöltekre), így a rangsoroló szkript sima
+   szabványos Python-nal fut, pyarrow nélkül.
+
+
+2. Jelöltforrás (Stage 1)
+   Magyar Hunspell / Ispell szótár (LibreOffice dictionaries, hu_HU)
+   Szerzői jog: Németh László és Godó Ferenc
+   Licenc: MPL-2.0 vagy LGPL-3.0-or-later
+   https://github.com/LibreOffice/dictionaries/tree/master/hu_HU
+   Feldolgozás: tools/build_wordlist.py (mechanikus szűrés)
+
+
+3. Jelenlegi produkciós szólista
+   lang/hun.js – 7 776 szó, változatlan. A Stage-2 minden javasolt
+   poolja ezt a teljes listát tartalmazza, kivétel nélkül.
+
+
+Fogalmak
+--------
+form        szóalak (ortográfiai)
+lemma       szótári alak
+freq        szóalak nyers gyakorisága
+lemma_freq  lemma nyers gyakorisága  <- elsődleges rangsorolási jel
+llfpm10     log10 lemma-gyakoriság per millió
+lfpm10      log10 szóalak-gyakoriság per millió
+hunspell    szerepel-e a lemma a hunspell helyesírási szótárban
+            (tájékoztató jellegű, a szűrés nem használja)
+
+Normalizálás: NFC + trim + lower() mindkét oldalon. Az ékezetek
+megmaradnak, nincs átírás és nincs szótövezés; csak a pontosan egyező
+normalizált alak számít találatnak. A találat nélküli szavakhoz a
+szkript nem rendel kitalált gyakoriságot: a rangsor végére kerülnek, és
+szerepelnek az unmatched_candidates.txt fájlban.
+
+
+A hozzáadott (nem produkciós) szavak gyakorisági profilja
+----------------------------------------------------------
+pool    hozzáadott   min lemma_freq   medián   p10      p90
+12000   4 224        32 961           68 626   37 300   690 188
+16000   8 224        13 964           34 006   16 104   222 658
+20000   12 224        7 111           20 940    8 631   131 615
+25000   17 224        3 326           12 944    4 355    87 366
+
+Összetett szavak aránya a hozzáadott szavak között: 18,1% (12k) és
+21,8% (25k); ezek nincsenek eltávolítva, csak megjelölve
+(compound_flag, review_compounds_*.txt).
+
+Megjegyzés: a produkciós 7 776 szó mindegyike benne van mind a négy
+poolban, és egyik sem esett ki a szűrők miatt.
+
+
+A Stage-2 lépések megismétlése
+------------------------------
+1) frequency_webcorpus2.tsv újragenerálása a parquet-ből (pyarrow kell):
+     python tools/extract_frequency_table.py \
+         --parquet tools/_webcorpus2_frequencies.parquet
+2) rangsorolás és poolok (csak szabványos Python kell):
+     python tools/rank_candidates.py \
+         --freq tools/wordlist_analysis/stage2/frequency_webcorpus2.tsv
+
+A tools/_webcorpus2_frequencies.parquet (615 MB) csak az 1) lépéshez
+kell; a 2) lépéshez nem. Ha nincs rá szükség, nyugodtan törölhető.
