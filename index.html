@@ -83,6 +83,13 @@
     .generate-inline { min-width:112px; padding:0 14px; border:0; border-radius:14px; color:white; background:var(--primary); font-weight:800; cursor:pointer; }
     .generate-inline:hover { background:var(--primary-hover); }
     .generate-inline:disabled { opacity:.55; cursor:not-allowed; }
+    .phrase-list { display:grid; gap:10px; }
+    .phrase-row { display:grid; grid-template-columns:1fr auto; gap:10px; }
+    .phrase-row .result { min-height:56px; }
+    .phrase-actions { display:flex; justify-content:flex-end; margin:16px 0 20px; }
+    .phrase-actions .generate-inline { min-height:44px; padding:0 18px; }
+    #phrase-message { min-height:56px; margin-bottom:20px; }
+    #phrase-message[hidden] { display:none; }
     .controls { display:grid; gap:20px; }
     .field { display:grid; gap:9px; }
     .field-head { display:flex; justify-content:space-between; gap:16px; align-items:baseline; }
@@ -120,7 +127,7 @@
     .toast { position:fixed; left:50%; bottom:24px; z-index:10; transform:translate(-50%,20px); padding:10px 16px; border-radius:999px; color:white; background:#152039; box-shadow:0 10px 25px rgba(0,0,0,.22); opacity:0; pointer-events:none; transition:.2s ease; }
     .toast.show { transform:translate(-50%,0); opacity:1; }
     @media (max-width:560px) {
-      body { padding:0; place-items:stretch; } .app { min-height:100vh; border-radius:0; } header { padding:24px 20px 16px; } .tabs { margin:0 20px; } .panel { padding:20px; } .checks,.number-settings,.number-settings.two { grid-template-columns:1fr; } .result-wrap { grid-template-columns:1fr 1fr; } .result { grid-column:1 / -1; } .copy,.generate-inline { width:100%; min-height:44px; } .seo-copy { padding:0 20px 24px; } .sep-btn { min-height:36px; padding:0 9px; }
+      body { padding:0; place-items:stretch; } .app { min-height:100vh; border-radius:0; } header { padding:24px 20px 16px; } .tabs { margin:0 20px; } .panel { padding:20px; } .checks,.number-settings,.number-settings.two { grid-template-columns:1fr; } .result-wrap { grid-template-columns:1fr 1fr; } .result { grid-column:1 / -1; } .copy,.generate-inline { width:100%; min-height:44px; } .seo-copy { padding:0 20px 24px; } .sep-btn { min-height:36px; padding:0 9px; } .phrase-row { grid-template-columns:1fr; }
     }
   </style>
 </head>
@@ -181,12 +188,16 @@
     </section>
 
     <section class="panel" id="phrase-panel" role="tabpanel" aria-labelledby="phrase-tab">
-      <div class="result-wrap">
-        <div class="result" id="phrase-result" aria-live="polite">Szólista betöltése…</div>
-        <button class="copy" type="button" data-copy="phrase-result">Másolás</button>
+      <div class="result" id="phrase-message">Szólista betöltése…</div>
+      <div class="phrase-list" id="phrase-list" aria-live="polite"></div>
+      <div class="phrase-actions">
         <button class="generate-inline" id="generate-phrase" type="button" disabled>Új jelmondat</button>
       </div>
       <div class="controls">
+        <div class="field">
+          <div class="field-head"><label for="candidate-count">Jelmondatok száma</label><output id="candidate-count-value" for="candidate-count">3</output></div>
+          <input id="candidate-count" type="range" min="1" max="5" step="1" value="3">
+        </div>
         <div class="field">
           <div class="field-head"><label for="word-count">Szavak száma</label><output id="word-count-value" for="word-count">3</output></div>
           <input id="word-count" type="range" min="2" max="10" value="3">
@@ -311,7 +322,8 @@
   function log2Combination(n,k) { if(k<0||k>n)return -Infinity; k=Math.min(k,n-k); let r=0; for(let i=1;i<=k;i++) r+=Math.log2(n-k+i)-Math.log2(i); return r; }
   function randomDigitString(length) { let s=""; for(let i=0;i<length;i++) s+=String(secureRandomInt(10)); return s; }
 
-  let currentPhraseWords = [];
+  let phraseCandidates = [];
+  let candidateRows = [];
 
   // Az "Elválasztó karakterek" mező az egyetlen forrás; a gombok csak szerkesztik azt.
   function separatorCharacterSet() {
@@ -344,21 +356,18 @@
     else { chars.splice(index,1); input.value=chars.join(""); }
     if(input.setSelectionRange) input.setSelectionRange(input.value.length,input.value.length);
     syncSeparatorButtons();
-    renderPassphrase();
+    renderCandidates();
   }
 
-  function buildNewPhraseWordPool() {
-    if(!hungarianWords.length) return;
+  // Egy jelölt szókészlete (a "Szavak száma" csúszka maximumáig), hogy a szavak
+  // számának módosítása ne sorsolja újra a már megjelenített szavakat.
+  function buildCandidateWordPool() {
     const maxWords=Number($("#word-count").max) || 10;
-    currentPhraseWords=Array.from({length:maxWords},()=>pick(hungarianWords));
+    return Array.from({length:maxWords},()=>pick(hungarianWords));
   }
 
-  let currentPhraseParts = null;
-
-  // Új véletlen tartalmat készít: szavak + számblokkok (érték és pozíció).
-  function buildPhraseParts() {
-    if(!hungarianWords.length || !currentPhraseWords.length) return;
-
+  // A szerkezeti beállítások egyszer, minden jelöltre közösen (és a mezők visszaklamppolása).
+  function phraseSettings() {
     const count=Number($("#word-count").value);
     const blocks=clampInteger($("#number-block-count").value,0,count);
     const minD=clampInteger($("#number-min-digits").value,1,12);
@@ -369,59 +378,127 @@
     $("#number-min-digits").value=String(minD);
     $("#number-max-digits").value=String(maxD);
 
-    const words=currentPhraseWords.slice(0,count).map(word=>({word,digits:"",side:"after"}));
-    const selectedWordIndexes=secureShuffle(Array.from({length:count},(_,i)=>i)).slice(0,blocks);
+    return {count,blocks,minD,maxD};
+  }
+
+  // Egy jelölt új véletlen tartalma: szavak + számblokkok (érték és pozíció).
+  function buildCandidateParts(settings,pool) {
+    const words=pool.slice(0,settings.count).map(word=>({word,digits:"",side:"after"}));
+    const selectedWordIndexes=secureShuffle(Array.from({length:settings.count},(_,i)=>i)).slice(0,settings.blocks);
     for(const wordIndex of selectedWordIndexes) {
-      words[wordIndex].digits=randomDigitString(minD+secureRandomInt(maxD-minD+1));
+      words[wordIndex].digits=randomDigitString(settings.minD+secureRandomInt(settings.maxD-settings.minD+1));
       words[wordIndex].side=secureRandomInt(2)===0?"before":"after";
     }
 
-    let bits=count*Math.log2(hungarianWords.length);
-    if(blocks>0) {
-      const lengths=maxD-minD+1, avg=(minD+maxD)/2;
-      bits+=log2Combination(count,blocks)+blocks*(1+Math.log2(lengths)+avg*Math.log2(10));
+    let baseBits=settings.count*Math.log2(hungarianWords.length);
+    if(settings.blocks>0) {
+      const lengths=settings.maxD-settings.minD+1, avg=(settings.minD+settings.maxD)/2;
+      baseBits+=log2Combination(settings.count,settings.blocks)+settings.blocks*(1+Math.log2(lengths)+avg*Math.log2(10));
     }
 
-    currentPhraseParts={words,baseBits:bits};
-    renderPassphrase();
+    return {pool,words,baseBits};
   }
 
-  // Csak megjelenít: a meglévő szavakat/számblokkokat fűzi össze az aktuális elválasztókkal,
-  // új véletlen tartalmat (szót, számot, pozíciót) nem készít.
-  function renderPassphrase() {
-    if(!currentPhraseParts) return;
+  function candidateTarget() { return clampInteger($("#candidate-count").value,1,5); }
+
+  // A csúszka állítása: a meglévő jelölteket megtartja, csak a hiányzókat pótolja
+  // (vagy levágja), és kizárólag az új jelölteket rajzolja ki.
+  function syncCandidateCount() {
+    if(!hungarianWords.length) return;
+    const settings=phraseSettings();
+    const target=candidateTarget();
+
+    if(target<phraseCandidates.length) {
+      phraseCandidates.length=target;
+      ensureCandidateRows(target);
+      updatePhraseStatus();
+      return;
+    }
+
+    while(phraseCandidates.length<target) {
+      phraseCandidates.push(buildCandidateParts(settings,buildCandidateWordPool()));
+      ensureCandidateRows(phraseCandidates.length);
+      renderCandidate(phraseCandidates.length-1);
+    }
+    updatePhraseStatus();
+  }
+
+  // Új tartalom minden jelöltnek; a meglévő szókészlet megmarad (szószám/blokk változásnál),
+  // teljes újragenerálásnál viszont mindenki új szókészletet kap.
+  function rebuildCandidates() {
+    if(!hungarianWords.length) return;
+    const settings=phraseSettings();
+    const next=[];
+    for(let i=0;i<candidateTarget();i++) {
+      const pool=phraseCandidates[i] ? phraseCandidates[i].pool : buildCandidateWordPool();
+      next.push(buildCandidateParts(settings,pool));
+    }
+    phraseCandidates=next;
+    renderCandidates();
+  }
+
+  // A sorok száma kövesse a jelöltekét: a meglévő sorokat nem építi újra.
+  function ensureCandidateRows(count) {
+    while(candidateRows.length<count) {
+      const row=document.createElement("div"); row.className="phrase-row";
+      const text=document.createElement("div"); text.className="result";
+      const button=document.createElement("button"); button.type="button"; button.className="copy"; button.textContent="Másolás";
+      button.addEventListener("click",()=>copyText(text.textContent));
+      row.appendChild(text); row.appendChild(button);
+      $("#phrase-list").appendChild(row);
+      candidateRows.push({row,text,button});
+    }
+    while(candidateRows.length>count) candidateRows.pop().row.remove();
+  }
+
+  // Egy jelölt kirajzolása: meglévő szavak/számblokkok + aktuális elválasztók.
+  function renderCandidate(index) {
+    const candidate=phraseCandidates[index];
+    if(!candidate || !candidateRows[index]) return;
 
     const capitalize=$("#capitalize-words").checked;
     const separators=separatorCharacterSet();
 
-    const parts=currentPhraseParts.words.map(({word,digits,side})=>{
+    const parts=candidate.words.map(({word,digits,side})=>{
       const text=capitalize?word.charAt(0).toLocaleUpperCase("hu-HU")+word.slice(1):word;
       return side==="before"?digits+text:text+digits;
     });
 
     let phrase=parts[0] ?? "";
-    for(let i=1;i<parts.length;i++) {
-      phrase+=(separators.length?pick(separators):"")+parts[i];
-    }
+    for(let i=1;i<parts.length;i++) phrase+=(separators.length?pick(separators):"")+parts[i];
 
-    let bits=currentPhraseParts.baseBits;
-    // Minden szóhatáron külön, véletlenszerű választás történik a karakterkészletből.
-    if(separators.length>1) bits+=(parts.length-1)*Math.log2(separators.length);
+    candidateRows[index].text.textContent=phrase;
+  }
 
-    $("#phrase-result").textContent=phrase;
+  // Entrópia + állapotsor: egyetlen jelmondatra vonatkozik (minden jelölt azonos beállításokkal készül).
+  function updatePhraseStatus() {
+    if(!phraseCandidates.length) return;
+    const separators=separatorCharacterSet();
+    let bits=phraseCandidates[0].baseBits;
+    if(separators.length>1) bits+=(phraseCandidates[0].words.length-1)*Math.log2(separators.length);
+    $("#phrase-message").hidden=true;
     showQuality(bits,$("#phrase-bits"),$("#phrase-quality"));
+  }
+
+  // Minden jelölt újrarajzolása (elválasztó- vagy nagybetű-változás).
+  function renderCandidates() {
+    if(!phraseCandidates.length) return;
+    ensureCandidateRows(phraseCandidates.length);
+    phraseCandidates.forEach((_,index)=>renderCandidate(index));
+    updatePhraseStatus();
   }
 
   function generatePassphrase() {
     if(!hungarianWords.length) return;
-    buildNewPhraseWordPool();
-    buildPhraseParts();
+    phraseCandidates=[];   // minden jelölt új szókészletet kap
+    rebuildCandidates();
   }
 
   function switchTab(name) { const p=name==="password"; $("#password-tab").setAttribute("aria-selected",p); $("#phrase-tab").setAttribute("aria-selected",!p); $("#password-panel").hidden=!p; $("#phrase-panel").hidden=p; }
   let toastTimer;
   function showToast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("show"),1500);}
-  async function copyResult(id){const text=document.getElementById(id).textContent;try{await navigator.clipboard.writeText(text);}catch{const ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();}showToast("Vágólapra másolva");}
+  async function copyText(text){try{await navigator.clipboard.writeText(text);}catch{const ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();}showToast("Vágólapra másolva");}
+  async function copyResult(id){await copyText(document.getElementById(id).textContent);}
 
   async function loadWordList(){
     try {
@@ -434,7 +511,8 @@
       generatePassphrase();
     } catch(err) {
       console.error(err);
-      $("#phrase-result").textContent="A magyar szólista nem tölthető be.";
+      $("#phrase-message").textContent="A magyar szólista nem tölthető be.";
+      $("#phrase-message").hidden=false;
       $("#phrase-bits").textContent="Ellenőrizd, hogy a lang mappa (hun.js) elérhető-e az index.html mellett.";
     }
   }
@@ -494,10 +572,14 @@
   ["#use-numbers","#use-symbols"].forEach(id=>$(id).addEventListener("change",syncPasswordMinimums));
   $("#avoid-ambiguous").addEventListener("change",()=>{});
   ["#min-numbers","#min-symbols","#symbol-set"].forEach(id=>$(id).addEventListener("input",()=>{}));
+  $("#candidate-count").addEventListener("input",e=>{
+    $("#candidate-count-value").value=e.target.value;
+    syncCandidateCount();
+  });
   $("#word-count").addEventListener("input",e=>{
     $("#word-count-value").value=e.target.value;
     syncPhraseNumberBlocks();
-    buildPhraseParts();
+    rebuildCandidates();
   });
   document.querySelectorAll(".sep-btn").forEach(button=>{
     button.addEventListener("click",()=>toggleSeparatorChar(button.dataset.sep));
@@ -505,12 +587,12 @@
   $("#separator-chars").addEventListener("input",()=>{
     normalizeSeparatorField();
     syncSeparatorButtons();
-    renderPassphrase();
+    renderCandidates();
   });
-  $("#capitalize-words").addEventListener("change",renderPassphrase);
+  $("#capitalize-words").addEventListener("change",renderCandidates);
   ["#number-block-count","#number-min-digits","#number-max-digits"].forEach(id=>$(id).addEventListener("input",event=>{
     syncPhraseNumberBlocks(event.target);
-    buildPhraseParts();
+    rebuildCandidates();
   }));
   document.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",()=>copyResult(b.dataset.copy)));
 
