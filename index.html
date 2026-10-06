@@ -48,6 +48,7 @@
       --warning: #a45d08;
       --danger: #b4233d;
       --shadow: 0 24px 70px rgba(34,54,104,.16);
+      --q1:#c0392b; --q2:#d35400; --q3:#a45d08; --q4:#6f8f00; --q5:#16805d; --q6:#0b6b4a;
     }
     @media (prefers-color-scheme: dark) {
       :root {
@@ -57,6 +58,7 @@
         --border:#34415b; --primary:#7896ff; --primary-hover:#9aafff;
         --success:#62d2a9; --warning:#ffc66d; --danger:#ff8298;
         --shadow:0 24px 70px rgba(0,0,0,.34);
+        --q1:#ff8298; --q2:#ff9a63; --q3:#ffc66d; --q4:#cfe06a; --q5:#62d2a9; --q6:#3ec99a;
       }
     }
     * { box-sizing:border-box; }
@@ -136,7 +138,21 @@
     .generate:disabled { opacity:.55; cursor:not-allowed; }
     .status { display:flex; justify-content:space-between; gap:14px; padding-top:2px; color:var(--muted); font-size:.88rem; }
     .quality { font-weight:800; }
-    .quality.good { color:var(--success); } .quality.medium { color:var(--warning); } .quality.weak { color:var(--danger); }
+    .quality.very-weak { color:var(--q1); } .quality.weak { color:var(--q2); } .quality.medium { color:var(--q3); }
+    .quality.good { color:var(--q4); } .quality.strong { color:var(--q5); } .quality.very-strong { color:var(--q6); }
+    .bits-line { display:flex; align-items:center; gap:6px; }
+    .info-btn { flex:none; width:20px; height:20px; display:grid; place-items:center; padding:0; border:1px solid var(--border); border-radius:999px; color:var(--muted); background:var(--surface); font-size:.78rem; line-height:1; cursor:pointer; }
+    .info-btn:hover { color:var(--text); background:var(--surface-strong); }
+    .info-btn[aria-expanded="true"] { color:var(--text); border-color:color-mix(in srgb,var(--primary) 45%,var(--border)); background:color-mix(in srgb,var(--primary) 12%,var(--surface)); }
+    .info-btn:focus-visible { outline:2px solid var(--primary); outline-offset:2px; }
+    .info-panel { display:grid; gap:8px; margin-top:12px; padding:14px 16px; border:1px solid var(--border); border-radius:12px; background:var(--surface); font-size:.86rem; line-height:1.5; }
+    .info-panel[hidden] { display:none; }
+    .info-panel p { margin:0; }
+    .info-title { font-weight:800; font-size:.95rem; }
+    .info-panel .help { margin:0; }
+    #entropy-info-value { font-weight:800; }
+    #entropy-info-count { color:var(--text); font-weight:700; overflow-wrap:anywhere; }
+    .info-panel .copy { justify-self:start; width:auto; padding:0 14px; }
     .note { margin:20px 0 0; padding:13px 15px; border-left:4px solid var(--warning); border-radius:8px; color:var(--muted); background:color-mix(in srgb,var(--warning) 9%,transparent); font-size:.86rem; line-height:1.5; }
     .seo-copy { padding:0 30px 30px; color:var(--muted); font-size:.86rem; line-height:1.55; }
     .seo-copy h2 { color:var(--text); font-size:1rem; margin:0 0 6px; }
@@ -207,6 +223,18 @@
     <section class="panel" id="phrase-panel" role="tabpanel" aria-labelledby="phrase-tab">
       <div class="result" id="phrase-message">Szólista betöltése…</div>
       <div class="phrase-list" id="phrase-list" aria-live="polite"></div>
+      <div class="info-panel" id="entropy-info" hidden role="dialog" aria-labelledby="entropy-info-title">
+        <p class="info-title" id="entropy-info-title">Mit jelent az entrópia?</p>
+        <p>Az entrópia azt becsüli, hány bitnyi véletlenszerűség van a generálási folyamatban. Minél nagyobb az érték, annál több lehetséges jelmondat közül kellene egy támadónak keresnie.</p>
+        <p id="entropy-info-value"></p>
+        <p class="help" id="entropy-info-count"></p>
+        <p>Az entrópia nem ugyanaz, mint a karakterszám. Egy hosszabb jelmondat nem automatikusan erősebb; az számít, hogy mekkora és mennyire véletlen generálási térből választottuk.</p>
+        <p>Általában egy újabb véletlen szó hozzáadása sokkal nagyobb biztonsági növekedést ad, mint egy kiszámítható formázási szabály.</p>
+        <p>A feltörési idő erősen függ attól, hogyan tárolja és védi a jelszót az adott szolgáltatás, ezért itt nem adunk félrevezető időbecslést.</p>
+        <p class="help" id="entropy-info-caveat" hidden>A maximális hossz korlátozása csökkentheti a tényleges keresési teret; a kijelzett becslés ezt jelenleg nem feltétlenül veszi figyelembe.</p>
+        <p class="help">A Nagyon gyenge – Nagyon erős besorolás tájékoztató jellegű, a becsült generálási entrópia könnyebb értelmezésére szolgál; nem hivatalos szabványos besorolás.</p>
+        <button class="copy" id="entropy-info-close" type="button">Bezárás</button>
+      </div>
       <div class="phrase-actions">
         <button class="generate-inline" id="generate-phrase" type="button" disabled>Új jelmondat</button>
       </div>
@@ -350,7 +378,15 @@
   function clampInteger(v,min,max) { const n=Number.parseInt(v,10); return Number.isFinite(n)?Math.min(max,Math.max(min,n)):min; }
   function filterAmbiguous(chars) { return $("#avoid-ambiguous").checked ? [...chars].filter(c=>!AMBIGUOUS.has(c)).join("") : chars; }
   function uniqueChars(chars) { return [...new Set([...chars])].join(""); }
-  function qualityForBits(bits) { if(bits>=75)return{label:"Nagyon erős",c:"good"}; if(bits>=55)return{label:"Erős",c:"good"}; if(bits>=40)return{label:"Közepes",c:"medium"}; return{label:"Gyenge",c:"weak"}; }
+  // Hatfokozatú, tájékoztató jellegű UX-besorolás (nem hivatalos szabvány).
+  function qualityForBits(bits) {
+    if(bits>=80) return {label:"Nagyon erős",c:"very-strong"};
+    if(bits>=65) return {label:"Erős",c:"strong"};
+    if(bits>=55) return {label:"Jó",c:"good"};
+    if(bits>=45) return {label:"Közepes",c:"medium"};
+    if(bits>=35) return {label:"Gyenge",c:"weak"};
+    return {label:"Nagyon gyenge",c:"very-weak"};
+  }
   function showQuality(bits,bitsEl,qEl) { const q=qualityForBits(bits); bitsEl.textContent=`Becsült entrópia: ${Math.round(bits)} bit`; qEl.textContent=q.label; qEl.className=`quality ${q.c}`; }
 
   function passwordGroups() {
@@ -684,6 +720,69 @@
     row.compat.className=`compat ${check.ok?"ok":"bad"}`;
   }
 
+  // ---- Entrópia-magyarázat (ⓘ) ----
+  const SUPERSCRIPT_DIGITS={"0":"⁰","1":"¹","2":"²","3":"³","4":"⁴","5":"⁵","6":"⁶","7":"⁷","8":"⁸","9":"⁹"};
+  let entropyInfoIndex=null;
+
+  function superscriptNumber(value) {
+    return [...String(value)].map(ch=>SUPERSCRIPT_DIGITS[ch] ?? ch).join("");
+  }
+
+  // 2^bits pontos értéke BigInt-tel; túl hosszú értéknél null (akkor csak 2^N látszik).
+  function decimalPossibilities(bits,maxDigits=50) {
+    if(!Number.isInteger(bits) || bits<0 || bits>512) return null;
+    const text=(2n**BigInt(bits)).toString();
+    if(text.length>maxDigits) return null;
+    return text.replace(/\B(?=(\d{3})+$)/g," ");
+  }
+
+  function fillEntropyInfo(candidate) {
+    const bits=Math.round(candidateBits(candidate));
+    $("#entropy-info-value").textContent=`${bits} bit ≈ 2${superscriptNumber(bits)} lehetséges kimenet.`;
+    const decimal=decimalPossibilities(bits);
+    const countLine=$("#entropy-info-count");
+    countLine.hidden=decimal===null;
+    countLine.textContent=decimal===null?"":`≈ ${decimal} lehetséges kimenet`;
+    // A hosszkorlát szűkíti az elfogadott kimenetek halmazát; a becslés ezt nem tartalmazza.
+    $("#entropy-info-caveat").hidden=activeMaxLength()===null;
+  }
+
+  function openEntropyInfo(index) {
+    const candidate=phraseCandidates[index];
+    if(!candidate || !candidateRows[index]) return;
+    if(entropyInfoIndex!==null && candidateRows[entropyInfoIndex]) candidateRows[entropyInfoIndex].info.setAttribute("aria-expanded","false");
+    entropyInfoIndex=index;
+    fillEntropyInfo(candidate);
+    $("#entropy-info").hidden=false;
+    candidateRows[index].info.setAttribute("aria-expanded","true");
+    const close=$("#entropy-info-close");
+    if(close && close.focus) close.focus();
+  }
+
+  function closeEntropyInfo(restoreFocus) {
+    if(entropyInfoIndex===null) return;
+    const row=candidateRows[entropyInfoIndex];
+    if(row) {
+      row.info.setAttribute("aria-expanded","false");
+      if(restoreFocus && row.info.focus) row.info.focus();
+    }
+    entropyInfoIndex=null;
+    $("#entropy-info").hidden=true;
+  }
+
+  function toggleEntropyInfo(index) {
+    if(entropyInfoIndex===index) closeEntropyInfo(true);
+    else openEntropyInfo(index);
+  }
+
+  // A nyitott magyarázat frissítése (újragenerálás vagy beállításváltozás után).
+  function refreshEntropyInfo() {
+    if(entropyInfoIndex===null) return;
+    const candidate=phraseCandidates[entropyInfoIndex];
+    if(!candidate) { closeEntropyInfo(false); return; }
+    fillEntropyInfo(candidate);
+  }
+
   // Elválasztó-beállítás változott: új elválasztók sorsolása, majd újrarajzolás
   // (a szavak, a garantált számok és a nagybetű-cél változatlanok maradnak).
   function rerollSeparatorsAndRender() {
@@ -749,6 +848,7 @@
       phraseCandidates.length=target;
       ensureCandidateRows(target);
       updateWebsiteFeedback();
+      refreshEntropyInfo();
       hidePhraseMessage();
       return;
     }
@@ -785,15 +885,23 @@
       const row=document.createElement("div"); row.className="phrase-row";
       const text=document.createElement("div"); text.className="result";
       const strength=document.createElement("div"); strength.className="phrase-strength";
+      const bitsLine=document.createElement("span"); bitsLine.className="bits-line";
       const bits=document.createElement("span"); bits.className="bits";
+      const info=document.createElement("button");
+      info.type="button"; info.className="info-btn"; info.textContent="ⓘ";
+      info.setAttribute("aria-label","Entrópia magyarázata");
+      info.setAttribute("aria-expanded","false");
+      bitsLine.appendChild(bits); bitsLine.appendChild(info);
       const quality=document.createElement("span"); quality.className="quality";
       const compat=document.createElement("span"); compat.className="compat"; compat.hidden=true;
-      strength.appendChild(bits); strength.appendChild(quality); strength.appendChild(compat);
+      strength.appendChild(bitsLine); strength.appendChild(quality); strength.appendChild(compat);
       const button=document.createElement("button"); button.type="button"; button.className="copy"; button.textContent="Másolás";
       button.addEventListener("click",()=>copyText(text.textContent));
+      const index=candidateRows.length;
+      info.addEventListener("click",event=>{ if(event&&event.stopPropagation) event.stopPropagation(); toggleEntropyInfo(index); });
       row.appendChild(text); row.appendChild(strength); row.appendChild(button);
       $("#phrase-list").appendChild(row);
-      candidateRows.push({row,text,bits,quality,compat,button});
+      candidateRows.push({row,text,bits,bitsLine,info,quality,compat,button});
     }
     while(candidateRows.length>count) candidateRows.pop().row.remove();
   }
@@ -831,6 +939,7 @@
     ensureCandidateRows(phraseCandidates.length);
     phraseCandidates.forEach((_,index)=>renderCandidate(index));
     updateWebsiteFeedback();
+    refreshEntropyInfo();
     hidePhraseMessage();
   }
 
@@ -962,6 +1071,15 @@
       });
     });
   });
+  // Entrópia-magyarázat: a ⓘ gomb nyit/zár, külső kattintás és Escape zár.
+  $("#entropy-info-close").addEventListener("click",()=>closeEntropyInfo(true));
+  document.addEventListener("click",event=>{
+    if(entropyInfoIndex===null) return;
+    const panel=$("#entropy-info");
+    if(panel.contains && event.target && panel.contains(event.target)) return;
+    closeEntropyInfo(false);
+  });
+  document.addEventListener("keydown",event=>{ if(event.key==="Escape") closeEntropyInfo(true); });
   $("#separator-chars").addEventListener("input",()=>{
     normalizeSeparatorField();
     syncSeparatorButtons();
