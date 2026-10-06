@@ -1,0 +1,14 @@
+# --- Local dictionary / corpus inputs (never committed) --------------------
+/*.dic
+*.parquet
+
+# --- Generated wordlist-analysis output (never committed) -----------------
+# The reusable pipeline code (tools/*.py, tools/README.md) stays tracked; only
+# the provenance file is kept from the analysis output tree.
+/tools/wordlist_analysis/**
+!/tools/wordlist_analysis/stage2/
+!/tools/wordlist_analysis/stage2/SOURCES-AND-LICENSES.txt
+
+# --- Python bytecode -------------------------------------------------------
+__pycache__/
+*.pyc
