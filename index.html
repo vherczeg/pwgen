@@ -67,7 +67,7 @@
       font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
     }
     button,input,select { font:inherit; }
-    .app { width:min(720px,100%); overflow:hidden; border:1px solid color-mix(in srgb,var(--border) 82%,transparent); border-radius:24px; background:var(--card); box-shadow:var(--shadow); backdrop-filter:blur(18px); }
+    .app { width:min(100%,clamp(720px,70vw,1040px)); overflow:hidden; border:1px solid color-mix(in srgb,var(--border) 82%,transparent); border-radius:24px; background:var(--card); box-shadow:var(--shadow); backdrop-filter:blur(18px); }
     header { padding:30px 30px 18px; }
     h1 { margin:0 0 8px; font-size:clamp(1.55rem,5vw,2.15rem); letter-spacing:-.035em; }
     .lead { margin:0; color:var(--muted); line-height:1.55; }
@@ -84,8 +84,10 @@
     .generate-inline:hover { background:var(--primary-hover); }
     .generate-inline:disabled { opacity:.55; cursor:not-allowed; }
     .phrase-list { display:grid; gap:10px; }
-    .phrase-row { display:grid; grid-template-columns:1fr auto; gap:10px; }
+    .phrase-row { display:grid; grid-template-columns:1fr auto auto; gap:10px; }
     .phrase-row .result { min-height:56px; }
+    .phrase-strength { min-width:76px; display:grid; align-content:center; gap:2px; font-size:.82rem; line-height:1.3; }
+    .phrase-strength .bits { color:var(--muted); font-weight:700; white-space:nowrap; }
     .phrase-actions { display:flex; justify-content:flex-end; margin:16px 0 20px; }
     .phrase-actions .generate-inline { min-height:44px; padding:0 18px; }
     #phrase-message { min-height:56px; margin-bottom:20px; }
@@ -130,7 +132,7 @@
     .toast { position:fixed; left:50%; bottom:24px; z-index:10; transform:translate(-50%,20px); padding:10px 16px; border-radius:999px; color:white; background:#152039; box-shadow:0 10px 25px rgba(0,0,0,.22); opacity:0; pointer-events:none; transition:.2s ease; }
     .toast.show { transform:translate(-50%,0); opacity:1; }
     @media (max-width:560px) {
-      body { padding:0; place-items:stretch; } .app { min-height:100vh; border-radius:0; } header { padding:24px 20px 16px; } .tabs { margin:0 20px; } .panel { padding:20px; } .checks,.number-settings,.number-settings.two { grid-template-columns:1fr; } .result-wrap { grid-template-columns:1fr 1fr; } .result { grid-column:1 / -1; } .copy,.generate-inline { width:100%; min-height:44px; } .seo-copy { padding:0 20px 24px; } .sep-btn { min-height:36px; padding:0 9px; } .phrase-row { grid-template-columns:1fr; }
+      body { padding:0; place-items:stretch; } .app { min-height:100vh; border-radius:0; } header { padding:24px 20px 16px; } .tabs { margin:0 20px; } .panel { padding:20px; } .checks,.number-settings,.number-settings.two { grid-template-columns:1fr; } .result-wrap { grid-template-columns:1fr 1fr; } .result { grid-column:1 / -1; } .copy,.generate-inline { width:100%; min-height:44px; } .seo-copy { padding:0 20px 24px; } .sep-btn { min-height:36px; padding:0 9px; } .phrase-row { grid-template-columns:1fr auto; }
     }
   </style>
 </head>
@@ -228,8 +230,6 @@
           <p class="help" id="separator-help">A mező karakterei közül minden szóhatáron külön, véletlenszerűen választ. Üres mező esetén nincs elválasztó. A „123” a véletlen számjegy elválasztó; önálló számjegy nem használható.</p>
         </div>
 
-        <div class="status"><span id="phrase-bits"></span><span class="quality" id="phrase-quality"></span></div>
-
         <details>
           <summary>Speciális beállítások</summary>
           <div class="advanced-body">
@@ -237,14 +237,14 @@
               <span class="legend">Garantált számok</span>
               <div class="choices">
                 <label class="check"><input type="radio" name="number-preset" value="none"> Nincs</label>
-                <label class="check"><input type="radio" name="number-preset" value="one"> 1 szám</label>
-                <label class="check"><input type="radio" name="number-preset" value="two" checked> 2 szám</label>
+                <label class="check"><input type="radio" name="number-preset" value="one" checked> 1 szám</label>
+                <label class="check"><input type="radio" name="number-preset" value="two"> 2 szám</label>
                 <label class="check"><input type="radio" name="number-preset" value="custom"> Egyéni…</label>
               </div>
               <p class="help">A kiválasztott számok biztosan bekerülnek a jelmondatba. Az elválasztóknál bekapcsolható 123 ettől függetlenül, véletlenszerűen használhat számjegyet elválasztóként.</p>
               <div id="custom-number-settings" hidden>
                 <div class="number-settings">
-                  <label class="number-field">Számblokkok száma<input id="number-block-count" type="number" min="0" max="10" value="2" inputmode="numeric"></label>
+                  <label class="number-field">Számblokkok száma<input id="number-block-count" type="number" min="0" max="10" value="1" inputmode="numeric"></label>
                   <label class="number-field">Min. számjegy / blokk<input id="number-min-digits" type="number" min="1" max="12" value="1" inputmode="numeric"></label>
                   <label class="number-field">Max. számjegy / blokk<input id="number-max-digits" type="number" min="1" max="12" value="1" inputmode="numeric"></label>
                 </div>
@@ -255,9 +255,9 @@
             <div class="field">
               <span class="legend">Nagybetűzés</span>
               <div class="choices">
-                <label class="check"><input type="radio" name="capital-mode" value="none" checked> Nincs</label>
+                <label class="check"><input type="radio" name="capital-mode" value="none"> Nincs</label>
                 <label class="check"><input type="radio" name="capital-mode" value="all"> Minden szó</label>
-                <label class="check"><input type="radio" name="capital-mode" value="one"> Egy véletlen szó</label>
+                <label class="check"><input type="radio" name="capital-mode" value="one" checked> Egy véletlen szó</label>
                 <label class="check"><input type="radio" name="capital-mode" value="oneUpper"> Egy véletlen szó CSUPA NAGYBETŰ</label>
               </div>
             </div>
@@ -535,7 +535,7 @@
     if(target<phraseCandidates.length) {
       phraseCandidates.length=target;
       ensureCandidateRows(target);
-      updatePhraseStatus();
+      hidePhraseMessage();
       return;
     }
 
@@ -544,7 +544,7 @@
       ensureCandidateRows(phraseCandidates.length);
       renderCandidate(phraseCandidates.length-1);
     }
-    updatePhraseStatus();
+    hidePhraseMessage();
   }
 
   // Új tartalom minden jelöltnek; a meglévő szókészlet megmarad (szószám/blokk változásnál),
@@ -567,11 +567,15 @@
     while(candidateRows.length<count) {
       const row=document.createElement("div"); row.className="phrase-row";
       const text=document.createElement("div"); text.className="result";
+      const strength=document.createElement("div"); strength.className="phrase-strength";
+      const bits=document.createElement("span"); bits.className="bits";
+      const quality=document.createElement("span"); quality.className="quality";
+      strength.appendChild(bits); strength.appendChild(quality);
       const button=document.createElement("button"); button.type="button"; button.className="copy"; button.textContent="Másolás";
       button.addEventListener("click",()=>copyText(text.textContent));
-      row.appendChild(text); row.appendChild(button);
+      row.appendChild(text); row.appendChild(strength); row.appendChild(button);
       $("#phrase-list").appendChild(row);
-      candidateRows.push({row,text,button});
+      candidateRows.push({row,text,bits,quality,button});
     }
     while(candidateRows.length>count) candidateRows.pop().row.remove();
   }
@@ -593,26 +597,32 @@
     for(let i=1;i<parts.length;i++) phrase+=(options.length?renderSeparator(pick(options)):"")+parts[i];
 
     candidateRows[index].text.textContent=phrase;
+
+    const bits=candidateBits(candidate);
+    const quality=qualityForBits(bits);
+    candidateRows[index].bits.textContent=`${Math.round(bits)} bit`;
+    candidateRows[index].quality.textContent=quality.label;
+    candidateRows[index].quality.className=`quality ${quality.c}`;
   }
 
-  // Entrópia + állapotsor: egyetlen jelmondatra vonatkozik (minden jelölt azonos beállításokkal készül).
-  function updatePhraseStatus() {
-    if(!phraseCandidates.length) return;
+  // Egy jelölt entrópiája: ugyanaz a képlet, jelöltenként kiértékelve.
+  // A "123" pontosan egy választásnak számít (log2 N); a hozzá tartozó számjegy
+  // (log2 10) szándékosan nincs beszámítva: így a becslés továbbra is konzervatív.
+  function candidateBits(candidate) {
     const options=separatorOptionCount();
-    let bits=phraseCandidates[0].baseBits;
-    // A "123" pontosan egy választásnak számít (log2 N). A hozzá tartozó számjegy
-    // (log2 10) szándékosan nincs beszámítva: így a becslés továbbra is konzervatív.
-    if(options>1) bits+=(phraseCandidates[0].words.length-1)*Math.log2(options);
-    $("#phrase-message").hidden=true;
-    showQuality(bits,$("#phrase-bits"),$("#phrase-quality"));
+    let bits=candidate.baseBits;
+    if(options>1) bits+=(candidate.words.length-1)*Math.log2(options);
+    return bits;
   }
+
+  function hidePhraseMessage() { $("#phrase-message").hidden=true; }
 
   // Minden jelölt újrarajzolása (elválasztó- vagy nagybetű-változás).
   function renderCandidates() {
     if(!phraseCandidates.length) return;
     ensureCandidateRows(phraseCandidates.length);
     phraseCandidates.forEach((_,index)=>renderCandidate(index));
-    updatePhraseStatus();
+    hidePhraseMessage();
   }
 
   function generatePassphrase() {
@@ -638,9 +648,8 @@
       generatePassphrase();
     } catch(err) {
       console.error(err);
-      $("#phrase-message").textContent="A magyar szólista nem tölthető be.";
+      $("#phrase-message").textContent="A magyar szólista nem tölthető be. Ellenőrizd, hogy a lang mappa (hun.js) elérhető-e az index.html mellett.";
       $("#phrase-message").hidden=false;
-      $("#phrase-bits").textContent="Ellenőrizd, hogy a lang mappa (hun.js) elérhető-e az index.html mellett.";
     }
   }
 
