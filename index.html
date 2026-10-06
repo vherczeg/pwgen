@@ -234,6 +234,9 @@
   </main>
   <div class="toast" id="toast" role="status" aria-live="polite">Vágólapra másolva</div>
 
+  <!-- A szólista klasszikus script tagként töltődik be, hogy file:// alól is működjön (ott a fetch/XHR tiltott).
+       Nyelvenként egy fájl a lang mappában; a fájlnév az ISO 639-3 nyelvkód (hun = magyar). -->
+  <script src="lang/hun.js"></script>
   <script>
   "use strict";
   const $ = s => document.querySelector(s);
@@ -363,10 +366,9 @@
 
   async function loadWordList(){
     try {
-      const res=await fetch("./hu_HU.dic",{cache:"no-store"});
-      if(!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text=await res.text();
-      hungarianWords=text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+      const list=window.HU_WORDS;
+      if(!list || !list.length) throw new Error("A lang/hun.js nem töltődött be (window.HU_WORDS hiányzik).");
+      hungarianWords=(Array.isArray(list)?list:String(list).split(/\r?\n/)).map(s=>String(s).trim()).filter(Boolean);
       if(hungarianWords.length!==7776) console.warn(`A szólista ${hungarianWords.length} sort tartalmaz, nem 7776-ot.`);
       $("#word-list-size").textContent=hungarianWords.length.toLocaleString("hu-HU");
       $("#generate-phrase").disabled=false;
@@ -374,7 +376,7 @@
     } catch(err) {
       console.error(err);
       $("#phrase-result").textContent="A magyar szólista nem tölthető be.";
-      $("#phrase-bits").textContent="Ellenőrizd, hogy a hu_HU.dic az index.html mellett van-e.";
+      $("#phrase-bits").textContent="Ellenőrizd, hogy a lang mappa (hun.js) elérhető-e az index.html mellett.";
     }
   }
 
