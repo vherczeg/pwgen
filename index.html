@@ -100,6 +100,8 @@
     .checks { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
     .check { display:flex; align-items:center; gap:9px; min-height:46px; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:var(--surface); cursor:pointer; }
     .check input { width:18px; height:18px; accent-color:var(--primary); }
+    .choices { display:grid; gap:8px; }
+    .choices .check { min-height:40px; padding:8px 12px; }
     .sep-buttons { display:flex; flex-wrap:wrap; gap:6px; }
     .sep-btn { min-width:38px; min-height:38px; padding:0 10px; border:1px solid var(--border); border-radius:10px; color:var(--muted); background:var(--surface); font-weight:750; cursor:pointer; }
     .sep-btn:hover { background:var(--surface-strong); }
@@ -240,8 +242,13 @@
             </div>
 
             <div class="field">
-              <span class="legend">Formázás</span>
-              <div class="checks"><label class="check"><input id="capitalize-words" type="checkbox"> Szavak nagy kezdőbetűvel</label></div>
+              <span class="legend">Nagybetűzés</span>
+              <div class="choices">
+                <label class="check"><input type="radio" name="capital-mode" value="none" checked> Nincs</label>
+                <label class="check"><input type="radio" name="capital-mode" value="all"> Minden szó</label>
+                <label class="check"><input type="radio" name="capital-mode" value="one"> Egy véletlen szó</label>
+                <label class="check"><input type="radio" name="capital-mode" value="oneUpper"> Egy véletlen szó CSUPA NAGYBETŰ</label>
+              </div>
             </div>
           </div>
         </details>
@@ -324,6 +331,7 @@
 
   let phraseCandidates = [];
   let candidateRows = [];
+  let activeCapitalMode = "none";
 
   // Az "Elválasztó karakterek" mező az egyetlen forrás; a gombok csak szerkesztik azt.
   function separatorCharacterSet() {
@@ -381,8 +389,30 @@
     return {count,blocks,minD,maxD};
   }
 
+  // Nagybetűzés: a mód a vezérlőből jön, a véletlen cél a jelölt állapotában tárolódik.
+  function capitalMode() {
+    const checked=document.querySelector('input[name="capital-mode"]:checked');
+    return checked ? checked.value : "none";
+  }
+
+  function isRandomCapitalMode(mode) { return mode==="one" || mode==="oneUpper"; }
+
+  function capitalizeFirstLetter(word) { return word.charAt(0).toLocaleUpperCase("hu-HU")+word.slice(1); }
+
+  function caseWord(word,wordIndex,mode,target) {
+    if(mode==="all") return capitalizeFirstLetter(word);
+    if(mode==="one") return wordIndex===target?capitalizeFirstLetter(word):word;
+    if(mode==="oneUpper") return wordIndex===target?word.toLocaleUpperCase("hu-HU"):word;
+    return word;
+  }
+
+  // Új véletlen cél minden látható jelöltnek (belépés egy véletlen módba).
+  function rerollCapitalTargets() {
+    phraseCandidates.forEach(candidate=>{ candidate.capTarget=secureRandomInt(candidate.words.length); });
+  }
+
   // Egy jelölt új véletlen tartalma: szavak + számblokkok (érték és pozíció).
-  function buildCandidateParts(settings,pool) {
+  function buildCandidateParts(settings,pool,capTarget) {
     const words=pool.slice(0,settings.count).map(word=>({word,digits:"",side:"after"}));
     const selectedWordIndexes=secureShuffle(Array.from({length:settings.count},(_,i)=>i)).slice(0,settings.blocks);
     for(const wordIndex of selectedWordIndexes) {
@@ -396,7 +426,12 @@
       baseBits+=log2Combination(settings.count,settings.blocks)+settings.blocks*(1+Math.log2(lengths)+avg*Math.log2(10));
     }
 
-    return {pool,words,baseBits};
+    // A véletlen nagybetű-cél megőrzése, amíg érvényes (pl. ha csak a számblokkok változnak).
+    const target=(Number.isInteger(capTarget) && capTarget>=0 && capTarget<settings.count)
+      ? capTarget
+      : secureRandomInt(settings.count);
+
+    return {pool,words,baseBits,capTarget:target};
   }
 
   function candidateTarget() { return clampInteger($("#candidate-count").value,1,5); }
@@ -430,8 +465,9 @@
     const settings=phraseSettings();
     const next=[];
     for(let i=0;i<candidateTarget();i++) {
-      const pool=phraseCandidates[i] ? phraseCandidates[i].pool : buildCandidateWordPool();
-      next.push(buildCandidateParts(settings,pool));
+      const previous=phraseCandidates[i];
+      const pool=previous ? previous.pool : buildCandidateWordPool();
+      next.push(buildCandidateParts(settings,pool,previous ? previous.capTarget : undefined));
     }
     phraseCandidates=next;
     renderCandidates();
@@ -456,11 +492,11 @@
     const candidate=phraseCandidates[index];
     if(!candidate || !candidateRows[index]) return;
 
-    const capitalize=$("#capitalize-words").checked;
+    const mode=capitalMode();
     const separators=separatorCharacterSet();
 
-    const parts=candidate.words.map(({word,digits,side})=>{
-      const text=capitalize?word.charAt(0).toLocaleUpperCase("hu-HU")+word.slice(1):word;
+    const parts=candidate.words.map(({word,digits,side},wordIndex)=>{
+      const text=caseWord(word,wordIndex,mode,candidate.capTarget);
       return side==="before"?digits+text:text+digits;
     });
 
@@ -589,13 +625,22 @@
     syncSeparatorButtons();
     renderCandidates();
   });
-  $("#capitalize-words").addEventListener("change",renderCandidates);
+  document.querySelectorAll('input[name="capital-mode"]').forEach(radio=>{
+    radio.addEventListener("change",()=>{
+      const mode=capitalMode();
+      // Csak akkor sorsol új célokat, ha nem-véletlen módból lépünk véletlen módba.
+      if(isRandomCapitalMode(mode) && !isRandomCapitalMode(activeCapitalMode)) rerollCapitalTargets();
+      activeCapitalMode=mode;
+      renderCandidates();
+    });
+  });
   ["#number-block-count","#number-min-digits","#number-max-digits"].forEach(id=>$(id).addEventListener("input",event=>{
     syncPhraseNumberBlocks(event.target);
     rebuildCandidates();
   }));
   document.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",()=>copyResult(b.dataset.copy)));
 
+  activeCapitalMode=capitalMode();
   syncPasswordMinimums();
   syncPhraseNumberBlocks();
   syncSeparatorButtons();
