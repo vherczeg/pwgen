@@ -90,6 +90,7 @@
     .phrase-actions .generate-inline { min-height:44px; padding:0 18px; }
     #phrase-message { min-height:56px; margin-bottom:20px; }
     #phrase-message[hidden] { display:none; }
+    #custom-number-settings[hidden] { display:none; }
     .controls { display:grid; gap:20px; }
     .field { display:grid; gap:9px; }
     .field-head { display:flex; justify-content:space-between; gap:16px; align-items:baseline; }
@@ -218,12 +219,13 @@
             <button type="button" class="sep-btn" data-sep="%" aria-pressed="false">%</button>
             <button type="button" class="sep-btn" data-sep="!" aria-pressed="false">!</button>
             <button type="button" class="sep-btn" data-sep="?" aria-pressed="false">?</button>
+            <button type="button" class="sep-btn" id="sep-random-digit" aria-pressed="false" aria-label="Véletlenszerű számjegy elválasztóként">123</button>
           </div>
           <label class="sep-field" for="separator-chars">
             Elválasztó karakterek:
             <input id="separator-chars" class="text-input" type="text" value=" " spellcheck="false" autocomplete="off" aria-describedby="separator-help">
           </label>
-          <p class="help" id="separator-help">A mező karakterei közül minden szóhatáron külön, véletlenszerűen választ. Üres mező esetén nincs elválasztó.</p>
+          <p class="help" id="separator-help">A mező karakterei közül minden szóhatáron külön, véletlenszerűen választ. Üres mező esetén nincs elválasztó. A „123” a véletlen számjegy elválasztó; önálló számjegy nem használható.</p>
         </div>
 
         <div class="status"><span id="phrase-bits"></span><span class="quality" id="phrase-quality"></span></div>
@@ -232,13 +234,22 @@
           <summary>Speciális beállítások</summary>
           <div class="advanced-body">
             <div class="field">
-              <span class="legend">Véletlen számblokkok</span>
-              <div class="number-settings">
-                <label class="number-field">Számblokkok száma<input id="number-block-count" type="number" min="0" max="10" value="2" inputmode="numeric"></label>
-                <label class="number-field">Min. számjegy / blokk<input id="number-min-digits" type="number" min="1" max="12" value="1" inputmode="numeric"></label>
-                <label class="number-field">Max. számjegy / blokk<input id="number-max-digits" type="number" min="1" max="12" value="2" inputmode="numeric"></label>
+              <span class="legend">Garantált számok</span>
+              <div class="choices">
+                <label class="check"><input type="radio" name="number-preset" value="none"> Nincs</label>
+                <label class="check"><input type="radio" name="number-preset" value="one"> 1 szám</label>
+                <label class="check"><input type="radio" name="number-preset" value="two" checked> 2 szám</label>
+                <label class="check"><input type="radio" name="number-preset" value="custom"> Egyéni…</label>
               </div>
-              <p class="help">Legfeljebb egy számblokk kerül egy szóhoz. A kiválasztott szavaknál a blokk véletlenszerűen a szó elejére vagy végére kerül. Ha a blokkok száma 0, a számok ki vannak kapcsolva.</p>
+              <p class="help">A kiválasztott számok biztosan bekerülnek a jelmondatba. Az elválasztóknál bekapcsolható 123 ettől függetlenül, véletlenszerűen használhat számjegyet elválasztóként.</p>
+              <div id="custom-number-settings" hidden>
+                <div class="number-settings">
+                  <label class="number-field">Számblokkok száma<input id="number-block-count" type="number" min="0" max="10" value="2" inputmode="numeric"></label>
+                  <label class="number-field">Min. számjegy / blokk<input id="number-min-digits" type="number" min="1" max="12" value="1" inputmode="numeric"></label>
+                  <label class="number-field">Max. számjegy / blokk<input id="number-max-digits" type="number" min="1" max="12" value="1" inputmode="numeric"></label>
+                </div>
+                <p class="help">Legfeljebb egy blokk kerül egy szóhoz, a szó elejére vagy végére.</p>
+              </div>
             </div>
 
             <div class="field">
@@ -334,24 +345,66 @@
   let activeCapitalMode = "none";
 
   // Az "Elválasztó karakterek" mező az egyetlen forrás; a gombok csak szerkesztik azt.
-  function separatorCharacterSet() {
-    return [...new Set([...$("#separator-chars").value])];
+  // A mezőben a pontos "123" a véletlen számjegy elválasztó (RANDOM_DIGIT) egyetlen
+  // reprezentációja. Minden más számjegy érvénytelen literálként, a nem számjegy
+  // karakterek pedig literál elválasztók.
+  const RANDOM_DIGIT_TOKEN="123";
+
+  function parseSeparatorField() {
+    let rest=$("#separator-chars").value, randomDigit=false;
+    if(rest.includes(RANDOM_DIGIT_TOKEN)) {
+      randomDigit=true;
+      // Minden további előfordulás ugyanaz az EGY token, nem növeli a súlyozást.
+      rest=rest.split(RANDOM_DIGIT_TOKEN).join("");
+    }
+    const literals=[...new Set([...rest].filter(ch=>!/[0-9]/.test(ch)))];
+    return {literals,randomDigit};
   }
 
+  // A választható elválasztók: a literál karakterek + opcionálisan a véletlen számjegy (null).
+  // A "123" így pontosan EGY választásnak számít, nem tíznek és nem háromnak.
+  function separatorOptions() {
+    const {literals,randomDigit}=parseSeparatorField();
+    if(randomDigit) literals.push(null);
+    return literals;
+  }
+
+  function separatorOptionCount() {
+    const {literals,randomDigit}=parseSeparatorField();
+    return literals.length+(randomDigit?1:0);
+  }
+
+  function renderSeparator(option) {
+    return option===null?String(secureRandomInt(10)):option;
+  }
+
+  // Kanonikus forma: a "123" token legfeljebb egyszer szerepel, minden más számjegy
+  // (akár csonka töredék) eltűnik, a literálok sorrendje és a beszúrási pozíció marad.
   function normalizeSeparatorField() {
     const input=$("#separator-chars");
-    const raw=input.value, unique=[...new Set([...raw])].join("");
-    if(unique===raw) return;
+    const raw=input.value;
+    let out="", tokenUsed=false;
+    for(let i=0;i<raw.length;) {
+      if(!tokenUsed && raw.startsWith(RANDOM_DIGIT_TOKEN,i)) {
+        out+=RANDOM_DIGIT_TOKEN; tokenUsed=true; i+=RANDOM_DIGIT_TOKEN.length; continue;
+      }
+      const ch=raw[i++];
+      if(/[0-9]/.test(ch)) continue;   // számjegy literál elválasztóként érvénytelen
+      if(out.includes(ch)) continue;   // nincs duplikált literál
+      out+=ch;
+    }
+    if(out===raw) return;
     const caretFromEnd=raw.length-(input.selectionStart ?? raw.length);
-    input.value=unique;
-    const position=Math.max(0,unique.length-caretFromEnd);
+    input.value=out;
+    const position=Math.max(0,out.length-caretFromEnd);
     if(input.setSelectionRange) input.setSelectionRange(position,position);
   }
 
   function syncSeparatorButtons() {
-    const chars=separatorCharacterSet();
+    const {literals,randomDigit}=parseSeparatorField();
     document.querySelectorAll(".sep-btn").forEach(button=>{
-      const active=chars.includes(button.dataset.sep);
+      // A "123" gombnak nincs data-sep attribútuma: állapota a mezőben lévő pontos token.
+      const active=button.dataset.sep===undefined ? randomDigit : literals.includes(button.dataset.sep);
       button.classList.toggle("active",active);
       button.setAttribute("aria-pressed",active?"true":"false");
     });
@@ -367,11 +420,47 @@
     renderCandidates();
   }
 
+  // A "123" gomb a mezőbe írja, illetve onnan törli a pontos tokent (nincs külön állapot).
+  function toggleRandomDigitSeparator() {
+    const input=$("#separator-chars");
+    if(parseSeparatorField().randomDigit) input.value=input.value.split(RANDOM_DIGIT_TOKEN).join("");
+    else input.value+=RANDOM_DIGIT_TOKEN;
+    normalizeSeparatorField();
+    if(input.setSelectionRange) input.setSelectionRange(input.value.length,input.value.length);
+    syncSeparatorButtons();
+    renderCandidates();
+  }
+
   // Egy jelölt szókészlete (a "Szavak száma" csúszka maximumáig), hogy a szavak
   // számának módosítása ne sorsolja újra a már megjelenített szavakat.
   function buildCandidateWordPool() {
     const maxWords=Number($("#word-count").max) || 10;
     return Array.from({length:maxWords},()=>pick(hungarianWords));
+  }
+
+  // "Garantált számok" előbeállítások: a meglévő számblokk-mezőket vezérlik.
+  const NUMBER_PRESETS={none:{blocks:0,min:1,max:1},one:{blocks:1,min:1,max:1},two:{blocks:2,min:1,max:1}};
+
+  function numberPreset() {
+    const checked=document.querySelector('input[name="number-preset"]:checked');
+    return checked ? checked.value : "none";
+  }
+
+  function syncNumberPresetRow() {
+    $("#custom-number-settings").hidden=numberPreset()!=="custom";
+  }
+
+  // Előbeállítás váltása: a szavak/szókészletek megmaradnak, csak a garantált számok újulnak.
+  function applyNumberPreset(value) {
+    const preset=NUMBER_PRESETS[value];
+    if(preset) {
+      $("#number-block-count").value=String(preset.blocks);
+      $("#number-min-digits").value=String(preset.min);
+      $("#number-max-digits").value=String(preset.max);
+    }
+    syncNumberPresetRow();
+    syncPhraseNumberBlocks();
+    rebuildCandidates();
   }
 
   // A szerkezeti beállítások egyszer, minden jelöltre közösen (és a mezők visszaklamppolása).
@@ -493,7 +582,7 @@
     if(!candidate || !candidateRows[index]) return;
 
     const mode=capitalMode();
-    const separators=separatorCharacterSet();
+    const options=separatorOptions();
 
     const parts=candidate.words.map(({word,digits,side},wordIndex)=>{
       const text=caseWord(word,wordIndex,mode,candidate.capTarget);
@@ -501,7 +590,7 @@
     });
 
     let phrase=parts[0] ?? "";
-    for(let i=1;i<parts.length;i++) phrase+=(separators.length?pick(separators):"")+parts[i];
+    for(let i=1;i<parts.length;i++) phrase+=(options.length?renderSeparator(pick(options)):"")+parts[i];
 
     candidateRows[index].text.textContent=phrase;
   }
@@ -509,9 +598,11 @@
   // Entrópia + állapotsor: egyetlen jelmondatra vonatkozik (minden jelölt azonos beállításokkal készül).
   function updatePhraseStatus() {
     if(!phraseCandidates.length) return;
-    const separators=separatorCharacterSet();
+    const options=separatorOptionCount();
     let bits=phraseCandidates[0].baseBits;
-    if(separators.length>1) bits+=(phraseCandidates[0].words.length-1)*Math.log2(separators.length);
+    // A "123" pontosan egy választásnak számít (log2 N). A hozzá tartozó számjegy
+    // (log2 10) szándékosan nincs beszámítva: így a becslés továbbra is konzervatív.
+    if(options>1) bits+=(phraseCandidates[0].words.length-1)*Math.log2(options);
     $("#phrase-message").hidden=true;
     showQuality(bits,$("#phrase-bits"),$("#phrase-quality"));
   }
@@ -618,7 +709,12 @@
     rebuildCandidates();
   });
   document.querySelectorAll(".sep-btn").forEach(button=>{
-    button.addEventListener("click",()=>toggleSeparatorChar(button.dataset.sep));
+    // A "123" gombnak nincs data-sep attribútuma: az a véletlen számjegy elválasztót kapcsolja.
+    if(button.dataset.sep===undefined) button.addEventListener("click",toggleRandomDigitSeparator);
+    else button.addEventListener("click",()=>toggleSeparatorChar(button.dataset.sep));
+  });
+  document.querySelectorAll('input[name="number-preset"]').forEach(radio=>{
+    radio.addEventListener("change",()=>applyNumberPreset(numberPreset()));
   });
   $("#separator-chars").addEventListener("input",()=>{
     normalizeSeparatorField();
@@ -641,6 +737,7 @@
   document.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",()=>copyResult(b.dataset.copy)));
 
   activeCapitalMode=capitalMode();
+  syncNumberPresetRow();
   syncPasswordMinimums();
   syncPhraseNumberBlocks();
   syncSeparatorButtons();
