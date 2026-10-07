@@ -66,6 +66,7 @@
     </div>
 
     <section class="panel" id="password-panel" role="tabpanel" aria-labelledby="password-tab" hidden>
+      <div class="password-result-area" id="password-result-area">
       <div class="result-wrap">
         <div class="result" id="password-result" aria-live="polite"></div>
         <div class="strength-block" id="password-strength">
@@ -73,7 +74,10 @@
           <span class="quality-line"><span class="meter meter-sm" id="password-meter" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></span><span class="quality" id="password-quality"></span></span>
         </div>
         <button class="copy" type="button" data-copy="password-result" data-i18n="actions.copy">Másolás</button>
+      </div>
+      <div class="phrase-actions">
         <button class="generate-inline" id="generate-password" type="button" data-i18n="actions.newPassword">Új jelszó</button>
+      </div>
       </div>
       <div class="controls">
         <div class="field">
