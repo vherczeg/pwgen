@@ -746,15 +746,13 @@
   $("#avoid-ambiguous").addEventListener("change",generatePassword);
   ["#min-numbers","#min-symbols","#symbol-set"].forEach(id=>$(id).addEventListener("input",()=>{}));
   ["#min-numbers","#min-symbols","#symbol-set"].forEach(id=>$(id).addEventListener("change",generatePassword));   // commit: apply once
-  $("#candidate-count").addEventListener("input",e=>{
-    $("#candidate-count-value").value=e.target.value;
-    syncCandidateCount();
-  });
+  $("#candidate-count").addEventListener("input",e=>{ $("#candidate-count-value").value=e.target.value; });   // live number only
+  $("#candidate-count").addEventListener("change",syncCandidateCount);                                       // commit: rebuild once with the final count
   $("#word-count").addEventListener("input",e=>{
     $("#word-count-value").value=e.target.value;
-    syncPhraseNumberBlocks();
-    rebuildCandidates();
+    syncPhraseNumberBlocks();       // deterministic: keeps the guaranteed-number UI valid while dragging
   });
+  $("#word-count").addEventListener("change",rebuildCandidates);   // commit: regenerate once with the final word count
   document.querySelectorAll(".sep-btn").forEach(button=>{
     // The "123" button has no data-sep attribute: it toggles the random digit separator.
     if(button.dataset.sep===undefined) button.addEventListener("click",toggleRandomDigitSeparator);
@@ -773,9 +771,11 @@
   });
   $("#max-length-custom").addEventListener("input",()=>{
     generationLengthFailure=null;
-    updateLengthWarning();
-    renderCandidates();
+    updateLengthWarning();          // display only while typing
   });
+  // Committed custom maximum length: recalculate/re-filter the existing candidates once.
+  // renderCandidates() is deterministic here: it does not generate and does not truncate.
+  $("#max-length-custom").addEventListener("change",renderCandidates);
   ["#require-upper","#require-digit","#require-special","#forbid-space"].forEach(id=>{
     $(id).addEventListener("change",renderCandidates);   // recalculates only, does not generate
   });
@@ -805,10 +805,12 @@
   });
   document.addEventListener("keydown",event=>{ if(event.key==="Escape") closeEntropyInfo(true); });
   $("#separator-chars").addEventListener("input",()=>{
-    normalizeSeparatorField();
+    normalizeSeparatorField();      // filtering/normalisation only while typing
     syncSeparatorButtons();
-    rerollSeparatorsAndRender();
   });
+  // Committed separator set: draw the separators once. Enter fires change natively, so
+  // committing with Enter does not trigger a second regeneration on blur.
+  $("#separator-chars").addEventListener("change",rerollSeparatorsAndRender);
   document.querySelectorAll('input[name="capital-mode"]').forEach(radio=>{
     radio.addEventListener("change",()=>{
       const mode=capitalMode();
@@ -818,10 +820,12 @@
       renderCandidates();
     });
   });
+  // While typing, only the dependent UI (min/max/count validity) is kept in sync;
+  // candidate generation waits for the committed value.
   ["#number-block-count","#number-min-digits","#number-max-digits"].forEach(id=>$(id).addEventListener("input",event=>{
     syncPhraseNumberBlocks(event.target);
-    rebuildCandidates();
   }));
+  ["#number-block-count","#number-min-digits","#number-max-digits"].forEach(id=>$(id).addEventListener("change",rebuildCandidates));
   document.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",()=>copyResult(b.dataset.copy)));
 
   // Language switch: ONLY the visible texts are refreshed. No new password or passphrase is
