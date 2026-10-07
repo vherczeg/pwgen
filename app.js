@@ -7,7 +7,7 @@
   const BASE_LOWER = "abcdefghijklmnopqrstuvwxyz";
   const BASE_UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const BASE_NUMBERS = "0123456789";
-  let hungarianWords = []; let lastPasswordBits=null;
+  let hungarianWords = []; let lastPasswordBits=null; let lastPasswordLength=0;
 
   function secureRandomInt(max) {
     if (!Number.isSafeInteger(max) || max <= 0) throw new RangeError(t("error.invalidUpperBound"));
@@ -20,16 +20,21 @@
   function clampInteger(v,min,max) { const n=Number.parseInt(v,10); return Number.isFinite(n)?Math.min(max,Math.max(min,n)):min; }
   function filterAmbiguous(chars) { return $("#avoid-ambiguous").checked ? [...chars].filter(c=>!AMBIGUOUS.has(c)).join("") : chars; }
   function uniqueChars(chars) { return [...new Set([...chars])].join(""); }
-  // Six-level, informational UX rating (not an official standard).
+  // Six-level, informational UX rating (not an official standard). The scale itself is
+  // shared by all three tabs (strength.js); for generated values it classifies the
+  // generation entropy in bits.
   function qualityForBits(bits) {
-    if(bits>=80) return {label:t("quality.veryStrong"),c:"very-strong"};
-    if(bits>=65) return {label:t("quality.strong"),c:"strong"};
-    if(bits>=55) return {label:t("quality.good"),c:"good"};
-    if(bits>=45) return {label:t("quality.medium"),c:"medium"};
-    if(bits>=35) return {label:t("quality.weak"),c:"weak"};
-    return {label:t("quality.veryWeak"),c:"very-weak"};
+    const level=window.PWGEN_STRENGTH.levelForBits(bits);
+    return {label:t(window.PWGEN_STRENGTH.keyFor(level)),c:level};
   }
-  function showQuality(bits,bitsEl,qEl) { const q=qualityForBits(bits); bitsEl.textContent=t("password.bits",{bits:Math.round(bits)}); qEl.textContent=q.label; qEl.className=`quality ${q.c}`; }
+  function showQuality(bits,bitsEl,qEl) {
+    const q=qualityForBits(bits);
+    // Compact metadata line, same format as the passphrase candidate rows.
+    bitsEl.textContent=t("candidate.status",{bits:Math.round(bits),length:lastPasswordLength});
+    qEl.textContent=q.label;
+    qEl.className=`quality ${q.c}`;
+    window.PWGEN_STRENGTH.fillMeter($("#password-meter"),q.c);
+  }
 
   function passwordGroups() {
     const lower=filterAmbiguous(BASE_LOWER), upper=filterAmbiguous(BASE_UPPER);
@@ -41,6 +46,7 @@
 
   function generatePassword() {
     const length=Number($("#password-length").value), g=passwordGroups();
+    lastPasswordLength=length;
     if (!g.lower.length || !g.upper.length) return;
     if (g.useSymbols && !g.symbols.length) { $("#password-result").textContent=t("password.needSymbol"); lastPasswordBits=0; showQuality(0,$("#password-bits"),$("#password-quality")); return; }
     let minNumbers=g.useNumbers?clampInteger($("#min-numbers").value,1,20):0;
@@ -357,6 +363,7 @@
     row.bits.textContent=t("candidate.status",{bits:Math.round(bits),length:characterLength(phrase)});
     row.quality.textContent=quality.label;
     row.quality.className=`quality ${quality.c}`;
+    window.PWGEN_STRENGTH.fillMeter(row.meter,quality.c);
     row.compat.hidden=!websiteRequirementsActive();
     row.compat.textContent=check.ok?t("compat.ok"):t("compat.bad");
     row.compat.className=`compat ${check.ok?"ok":"bad"}`;
@@ -364,7 +371,7 @@
 
   // ---- Entropy explanation (ⓘ) ----
   const SUPERSCRIPT_DIGITS={"0":"⁰","1":"¹","2":"²","3":"³","4":"⁴","5":"⁵","6":"⁶","7":"⁷","8":"⁸","9":"⁹"};
-  let entropyInfoIndex=null;
+  let entropyInfoIndex=null, entropyInfoTrigger=null;
 
   function superscriptNumber(value) {
     return [...String(value)].map(ch=>SUPERSCRIPT_DIGITS[ch] ?? ch).join("");
@@ -378,48 +385,99 @@
     return text.replace(/\B(?=(\d{3})+$)/g," ");
   }
 
-  function fillEntropyInfo(candidate) {
-    const bits=Math.round(candidateBits(candidate));
+  // The explanation panel content is shared: candidates pass their own generation entropy,
+  // and the Password tab passes the generation entropy of the displayed password.
+  // passphraseContext marks content that only makes sense for the Passphrase generator
+  // (the maximum-length caveat and the "one more random word" tip), so opening the panel
+  // from the Password tab can never show passphrase-specific advice.
+  function fillEntropyInfoForBits(bits, options) {
+    const passphraseContext=!!(options && options.passphraseContext);
     $("#entropy-info-value").textContent=t("entropy.value",{bits,sup:superscriptNumber(bits)});
     const decimal=decimalPossibilities(bits);
     const countLine=$("#entropy-info-count");
     countLine.hidden=decimal===null;
     countLine.textContent=decimal===null?"":t("entropy.count",{count:decimal});
-    // The maximum length narrows the set of accepted outputs; the estimate does not account for that.
-    $("#entropy-info-caveat").hidden=activeMaxLength()===null;
+    // The maximum length is a Passphrase setting, so its caveat is shown only in that context.
+    $("#entropy-info-caveat").hidden=!(passphraseContext && activeMaxLength()!==null);
+    const moreWords=$("#entropy-info-more-words");
+    if(moreWords) moreWords.hidden=!passphraseContext;
+  }
+
+  function fillEntropyInfo(candidate) {
+    fillEntropyInfoForBits(Math.round(candidateBits(candidate)),{passphraseContext:true});
+  }
+
+  // The single explanation panel is moved to the tab that opened it, so both tabs keep
+  // their own layout and no second dialog is created. For the Passphrase tab this is the
+  // exact position the panel already has in the HTML (before the action row), so nothing
+  // changes there.
+  function mountEntropyInfoBefore(element) {
+    const panel=$("#entropy-info");
+    if(panel && element && element.parentNode) element.parentNode.insertBefore(panel,element);
+  }
+  function mountEntropyInfoAfter(element) {
+    const panel=$("#entropy-info");
+    if(panel && element && element.parentNode) element.parentNode.insertBefore(panel,element.nextSibling);
   }
 
   function openEntropyInfo(index) {
     const candidate=phraseCandidates[index];
     if(!candidate || !candidateRows[index]) return;
-    if(entropyInfoIndex!==null && candidateRows[entropyInfoIndex]) candidateRows[entropyInfoIndex].info.setAttribute("aria-expanded","false");
+    if(entropyInfoTrigger) entropyInfoTrigger.setAttribute("aria-expanded","false");
     entropyInfoIndex=index;
+    entropyInfoTrigger=candidateRows[index].info;
     fillEntropyInfo(candidate);
+    mountEntropyInfoBefore($(".phrase-actions"));
     $("#entropy-info").hidden=false;
-    candidateRows[index].info.setAttribute("aria-expanded","true");
+    entropyInfoTrigger.setAttribute("aria-expanded","true");
     const close=$("#entropy-info-close");
     if(close && close.focus) close.focus();
   }
 
+  // Same panel and same explanation, opened from the Password tab's compact metadata line.
+  function openPasswordEntropyInfo() {
+    if(lastPasswordBits===null) return;
+    if(entropyInfoTrigger) entropyInfoTrigger.setAttribute("aria-expanded","false");
+    entropyInfoIndex=null;
+    entropyInfoTrigger=$("#password-info");
+    fillEntropyInfoForBits(Math.round(lastPasswordBits));
+    mountEntropyInfoAfter($("#password-strength"));
+    $("#entropy-info").hidden=false;
+    if(entropyInfoTrigger) entropyInfoTrigger.setAttribute("aria-expanded","true");
+    const close=$("#entropy-info-close");
+    if(close && close.focus) close.focus();
+  }
+
+  function togglePasswordEntropyInfo() {
+    if(entropyInfoTrigger===$("#password-info")) closeEntropyInfo(true);
+    else openPasswordEntropyInfo();
+  }
+
+  // Closing always restores the panel's home position (its original place in the
+  // Passphrase panel), so the shared panel never stays inside whichever tab opened it.
   function closeEntropyInfo(restoreFocus) {
-    if(entropyInfoIndex===null) return;
-    const row=candidateRows[entropyInfoIndex];
-    if(row) {
-      row.info.setAttribute("aria-expanded","false");
-      if(restoreFocus && row.info.focus) row.info.focus();
+    if(entropyInfoTrigger) {
+      if(restoreFocus && entropyInfoTrigger.focus) entropyInfoTrigger.focus();
+      entropyInfoTrigger.setAttribute("aria-expanded","false");
+      entropyInfoTrigger=null;
     }
     entropyInfoIndex=null;
     $("#entropy-info").hidden=true;
+    mountEntropyInfoBefore($(".phrase-actions"));
   }
 
   function toggleEntropyInfo(index) {
-    if(entropyInfoIndex===index) closeEntropyInfo(true);
+    if(entropyInfoIndex===index && entropyInfoTrigger) closeEntropyInfo(true);
     else openEntropyInfo(index);
   }
 
   // Refreshing the open explanation (after regeneration or a settings change).
   function refreshEntropyInfo() {
-    if(entropyInfoIndex===null) return;
+    if(!entropyInfoTrigger) return;
+    if(entropyInfoIndex===null) {                       // opened from the Password tab
+      if(lastPasswordBits!==null) fillEntropyInfoForBits(Math.round(lastPasswordBits));
+      return;
+    }
     const candidate=phraseCandidates[entropyInfoIndex];
     if(!candidate) { closeEntropyInfo(false); return; }
     fillEntropyInfo(candidate);
@@ -526,7 +584,7 @@
     while(candidateRows.length<count) {
       const row=document.createElement("div"); row.className="phrase-row";
       const text=document.createElement("div"); text.className="result";
-      const strength=document.createElement("div"); strength.className="phrase-strength";
+      const strength=document.createElement("div"); strength.className="strength-block";
       const bitsLine=document.createElement("span"); bitsLine.className="bits-line";
       const bits=document.createElement("span"); bits.className="bits";
       const info=document.createElement("button");
@@ -534,16 +592,20 @@
       info.setAttribute("aria-label",t("entropy.infoAria"));
       info.setAttribute("aria-expanded","false");
       bitsLine.appendChild(bits); bitsLine.appendChild(info);
+      const meter=document.createElement("span"); meter.className="meter meter-sm"; meter.setAttribute("aria-hidden","true");
+      for(let i=0;i<6;i++) meter.appendChild(document.createElement("span"));
+      const qualityLine=document.createElement("span"); qualityLine.className="quality-line";
       const quality=document.createElement("span"); quality.className="quality";
       const compat=document.createElement("span"); compat.className="compat"; compat.hidden=true;
-      strength.appendChild(bitsLine); strength.appendChild(quality); strength.appendChild(compat);
+      qualityLine.appendChild(meter); qualityLine.appendChild(quality);
+      strength.appendChild(bitsLine); strength.appendChild(qualityLine); strength.appendChild(compat);
       const button=document.createElement("button"); button.type="button"; button.className="copy"; button.textContent=t("actions.copy");
       button.addEventListener("click",()=>copyText(text.textContent));
       const index=candidateRows.length;
       info.addEventListener("click",event=>{ if(event&&event.stopPropagation) event.stopPropagation(); toggleEntropyInfo(index); });
       row.appendChild(text); row.appendChild(strength); row.appendChild(button);
       $("#phrase-list").appendChild(row);
-      candidateRows.push({row,text,bits,bitsLine,info,quality,compat,button});
+      candidateRows.push({row,text,bits,bitsLine,info,meter,quality,compat,button});
     }
     while(candidateRows.length>count) candidateRows.pop().row.remove();
   }
@@ -595,6 +657,9 @@
   // "Password Check" tab clears every entered value and analysis (privacy behaviour).
   const TAB_IDS = { phrase: ["#phrase-tab", "#phrase-panel"], password: ["#password-tab", "#password-panel"], check: ["#check-tab", "#check-panel"] };
   function switchTab(name) {
+    // A tab switch must never leave the shared explanation panel open inside the panel
+    // that is being hidden (and must not leave a stale aria-expanded on its trigger).
+    closeEntropyInfo(false);
     Object.keys(TAB_IDS).forEach(key => {
       const [tabSelector, panelSelector] = TAB_IDS[key];
       $(tabSelector).setAttribute("aria-selected", key === name);
@@ -726,8 +791,12 @@
   });
   // Entropy explanation: the ⓘ button opens/closes it; an outside click or Escape closes it.
   $("#entropy-info-close").addEventListener("click",()=>closeEntropyInfo(true));
+  $("#password-info").addEventListener("click",event=>{
+    if(event && event.stopPropagation) event.stopPropagation();
+    togglePasswordEntropyInfo();
+  });
   document.addEventListener("click",event=>{
-    if(entropyInfoIndex===null) return;
+    if(!entropyInfoTrigger) return;
     const panel=$("#entropy-info");
     if(panel.contains && event.target && panel.contains(event.target)) return;
     closeEntropyInfo(false);
@@ -777,6 +846,7 @@
     updateLengthWarning();
     refreshPasswordStatus();
     renderWordListSize();
+    refreshEntropyInfo();        // the shared explanation panel follows the UI language too
     if (window.PWGEN_CHECK) window.PWGEN_CHECK.relabel();
     const message=$("#phrase-message");
     if(!hungarianWords.length && message && !message.hidden) message.textContent=t("error.wordListLoadFailed");

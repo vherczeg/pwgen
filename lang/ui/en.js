@@ -41,7 +41,6 @@ window.PWGEN_I18N.en = {
   "password.minSymbols": "Minimum special characters",
   "password.symbolSet": "Allowed special characters",
   "password.symbolSetHelp": "If a website rejects certain characters, simply delete them here. The minimum values apply only when that character type is enabled.",
-  "password.bits": "Estimated entropy: {bits} bits",
   "password.needSymbol": "Please enter at least one special character!",
   "password.minGreaterThanLength": "The number of mandatory characters ({count}) is greater than the password length.",
 
@@ -114,10 +113,11 @@ window.PWGEN_I18N.en = {
 
   "entropy.title": "What does entropy mean?",
   "entropy.infoAria": "Explanation of entropy",
-  "entropy.intro": "Entropy estimates how many bits of randomness the generation process contains. The larger the value, the more possible passphrases an attacker would have to search through.",
+  "entropy.intro": "Entropy estimates how many bits of randomness the generation process contains. The larger the value, the more possible outputs an attacker would have to search through.",
+  "entropy.vsChecker": "The entropy of a generated password or passphrase can be calculated from its random generation process. For an existing password, the selection process is unknown, so PWGen instead estimates the number of guesses from recognizable patterns.",
   "entropy.value": "{bits} bits ≈ 2{sup} possible outputs.",
   "entropy.count": "≈ {count} possible outputs",
-  "entropy.notLength": "Entropy is not the same as character count. A longer passphrase is not automatically stronger; what matters is how large and how random the space it was drawn from is.",
+  "entropy.notLength": "Entropy is not the same as character count. A longer generated value is not automatically stronger; what matters is how large and how random the space it was drawn from is.",
   "entropy.moreWords": "Adding one more random word usually gives a much larger security increase than a predictable formatting rule.",
   "entropy.noCrackTime": "Cracking time depends heavily on how a given service stores and protects the password, so we do not give a misleading time estimate here.",
   "entropy.caveat": "Limiting the maximum length can reduce the effective search space; the estimate shown here does not necessarily account for that.",
