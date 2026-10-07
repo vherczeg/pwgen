@@ -74,8 +74,9 @@
     .phrase-list { display:grid; gap:10px; }
     .phrase-row { display:grid; grid-template-columns:1fr auto auto; gap:10px; }
     .phrase-row .result { min-height:56px; }
-    .phrase-strength { min-width:132px; display:grid; align-content:center; gap:2px; font-size:.82rem; line-height:1.3; }
-    .phrase-strength .bits { color:var(--muted); font-weight:700; white-space:nowrap; }
+    .strength-block { min-width:132px; display:grid; align-content:center; gap:2px; font-size:.82rem; line-height:1.3; }
+    .strength-block .bits { color:var(--muted); font-weight:700; white-space:nowrap; }
+    #password-strength { margin-top:14px; }
     .compat { font-weight:800; white-space:nowrap; }
     .compat.ok { color:var(--success); }
     .compat.bad { color:var(--warning); }
@@ -122,8 +123,6 @@
     .generate { min-height:50px; border:0; border-radius:13px; color:white; background:var(--primary); font-weight:800; cursor:pointer; box-shadow:0 10px 24px color-mix(in srgb,var(--primary) 25%,transparent); }
     .generate:hover { background:var(--primary-hover); }
     .generate:disabled { opacity:.55; cursor:not-allowed; }
-    .status { display:flex; align-items:center; justify-content:space-between; gap:14px; padding-top:2px; color:var(--muted); font-size:.88rem; }
-    .status .meter { flex:none; width:78px; }
     .quality { font-weight:800; }
     .quality.very-weak { color:var(--q1); } .quality.weak { color:var(--q2); } .quality.medium { color:var(--q3); }
     .quality.good { color:var(--q4); } .quality.strong { color:var(--q5); } .quality.very-strong { color:var(--q6); }

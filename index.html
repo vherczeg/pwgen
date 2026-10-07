@@ -105,7 +105,10 @@
           </div>
         </details>
 
-        <div class="status"><span class="meter" id="password-meter" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></span><span class="quality" id="password-quality"></span><span id="password-bits"></span></div>
+        <div class="strength-block" id="password-strength">
+          <span class="bits-line"><span class="bits" id="password-bits"></span><button class="info-btn" id="password-info" type="button" aria-expanded="false" data-i18n-aria-label="entropy.infoAria">ⓘ</button></span>
+          <span class="quality-line"><span class="meter meter-sm" id="password-meter" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></span><span class="quality" id="password-quality"></span></span>
+        </div>
       </div>
     </section>
 
@@ -119,7 +122,7 @@
         <p id="entropy-info-value"></p>
         <p class="help" id="entropy-info-count"></p>
         <p data-i18n="entropy.notLength">Az entrópia nem ugyanaz, mint a karakterszám. Egy hosszabb jelmondat nem automatikusan erősebb; az számít, hogy mekkora és mennyire véletlen generálási térből választottuk.</p>
-        <p data-i18n="entropy.moreWords">Általában egy újabb véletlen szó hozzáadása sokkal nagyobb biztonsági növekedést ad, mint egy kiszámítható formázási szabály.</p>
+        <p data-i18n="entropy.moreWords" id="entropy-info-more-words">Általában egy újabb véletlen szó hozzáadása sokkal nagyobb biztonsági növekedést ad, mint egy kiszámítható formázási szabály.</p>
         <p data-i18n="entropy.noCrackTime">A feltörési idő erősen függ attól, hogyan tárolja és védi a jelszót az adott szolgáltatás, ezért itt nem adunk félrevezető időbecslést.</p>
         <p class="help" id="entropy-info-caveat" hidden data-i18n="entropy.caveat">A maximális hossz korlátozása csökkentheti a tényleges keresési teret; a kijelzett becslés ezt jelenleg nem feltétlenül veszi figyelembe.</p>
         <p class="help" data-i18n="entropy.disclaimer">A Nagyon gyenge – Nagyon erős besorolás tájékoztató jellegű, a becsült generálási entrópia könnyebb értelmezésére szolgál; nem hivatalos szabványos besorolás.</p>
