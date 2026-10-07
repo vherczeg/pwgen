@@ -98,17 +98,77 @@
         <details>
           <summary data-i18n="password.advanced">Speciális beállítások</summary>
           <div class="advanced-body">
-            <div class="number-settings two">
-              <label class="number-field"><span data-i18n="password.minNumbers">Minimum számjegy</span>
-                <input id="min-numbers" type="number" min="1" max="20" value="1" inputmode="numeric">
-              </label>
-              <label class="number-field"><span data-i18n="password.minSymbols">Minimum speciális jel</span>
-                <input id="min-symbols" type="number" min="1" max="20" value="1" inputmode="numeric">
-              </label>
+            <div class="setting-groups">
+              <section class="setting-group">
+                <h4 class="setting-group-title" data-i18n="password.groupDigits">Számjegyek</h4>
+                <div class="number-settings two">
+                  <label class="number-field"><span data-i18n="password.minNumbers">Minimum számjegy</span>
+                    <input id="min-numbers" type="number" min="1" max="20" value="1" inputmode="numeric">
+                  </label>
+                  <label class="number-field"><span data-i18n="password.maxNumbers">Maximum számjegy</span>
+                    <select id="max-numbers">
+                      <option value="" selected data-i18n="password.noLimit">Nincs korlát</option>
+                      <option value="1">1</option>
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                      <option value="4">4</option>
+                      <option value="5">5</option>
+                      <option value="6">6</option>
+                      <option value="7">7</option>
+                      <option value="8">8</option>
+                      <option value="9">9</option>
+                      <option value="10">10</option>
+                      <option value="11">11</option>
+                      <option value="12">12</option>
+                      <option value="13">13</option>
+                      <option value="14">14</option>
+                      <option value="15">15</option>
+                      <option value="16">16</option>
+                      <option value="17">17</option>
+                      <option value="18">18</option>
+                      <option value="19">19</option>
+                      <option value="20">20</option>
+                    </select>
+                  </label>
+                </div>
+              </section>
+              <section class="setting-group">
+                <h4 class="setting-group-title" data-i18n="password.groupSymbols">Speciális karakterek</h4>
+                <div class="number-settings two">
+                  <label class="number-field"><span data-i18n="password.minSymbols">Minimum speciális jel</span>
+                    <input id="min-symbols" type="number" min="1" max="20" value="1" inputmode="numeric">
+                  </label>
+                  <label class="number-field"><span data-i18n="password.maxSymbols">Maximum speciális karakter</span>
+                    <select id="max-symbols">
+                      <option value="" selected data-i18n="password.noLimit">Nincs korlát</option>
+                      <option value="1">1</option>
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                      <option value="4">4</option>
+                      <option value="5">5</option>
+                      <option value="6">6</option>
+                      <option value="7">7</option>
+                      <option value="8">8</option>
+                      <option value="9">9</option>
+                      <option value="10">10</option>
+                      <option value="11">11</option>
+                      <option value="12">12</option>
+                      <option value="13">13</option>
+                      <option value="14">14</option>
+                      <option value="15">15</option>
+                      <option value="16">16</option>
+                      <option value="17">17</option>
+                      <option value="18">18</option>
+                      <option value="19">19</option>
+                      <option value="20">20</option>
+                    </select>
+                  </label>
+                </div>
+                <label class="number-field"><span data-i18n="password.symbolSet">Használható speciális karakterek</span>
+                  <input id="symbol-set" class="text-input" type="text" value="!@#$%^&amp;*()-_=+[]{};:,.?" spellcheck="false" autocomplete="off">
+                </label>
+              </section>
             </div>
-            <label class="number-field"><span data-i18n="password.symbolSet">Használható speciális karakterek</span>
-              <input id="symbol-set" class="text-input" type="text" value="!@#$%^&amp;*()-_=+[]{};:,.?" spellcheck="false" autocomplete="off">
-            </label>
             <p class="help" data-i18n="password.symbolSetHelp">Ha egy webhely nem fogad el bizonyos jeleket, egyszerűen töröld őket innen. A minimum értékek csak akkor érvényesek, ha az adott karaktertípus be van kapcsolva.</p>
           </div>
         </details>

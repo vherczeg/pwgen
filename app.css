@@ -111,7 +111,8 @@
     .number-settings { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
     .number-settings.two { grid-template-columns:repeat(2,minmax(0,1fr)); }
     .number-field { display:grid; gap:7px; padding:11px 12px; border:1px solid var(--border); border-radius:12px; background:var(--surface); font-size:.82rem; font-weight:750; }
-    .number-field input,.text-input { width:100%; min-height:40px; padding:6px 10px; border:1px solid var(--border); border-radius:9px; color:var(--text); background:var(--card); font-weight:700; }
+    .number-field input,.number-field select,.text-input { width:100%; min-height:40px; padding:6px 10px; border:1px solid var(--border); border-radius:9px; color:var(--text); background:var(--card); font-weight:700; }
+    .number-field select { font:inherit; font-weight:700; }
     details { border:1px solid var(--border); border-radius:12px; background:var(--surface); overflow:hidden; }
     summary { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 12px; list-style:none; cursor:pointer; padding:12px 14px; font-weight:800; user-select:none; }
     summary::-webkit-details-marker { display:none; }
@@ -120,6 +121,9 @@
     .acc-title { min-width:0; }
     .acc-value { margin-left:auto; color:var(--muted); font-weight:600; font-size:.86rem; text-align:right; overflow-wrap:anywhere; }
     .advanced-body { display:grid; gap:14px; padding:0 14px 14px; }
+    .setting-groups { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; align-items:start; }
+    .setting-group { display:grid; gap:11px; padding:13px 14px; border:1px solid var(--border); border-radius:12px; background:var(--surface); }
+    .setting-group-title { margin:0; font-size:.82rem; font-weight:750; }
     .generate { min-height:50px; border:0; border-radius:13px; color:white; background:var(--primary); font-weight:800; cursor:pointer; box-shadow:0 10px 24px color-mix(in srgb,var(--primary) 25%,transparent); }
     .generate:hover { background:var(--primary-hover); }
     .generate:disabled { opacity:.55; cursor:not-allowed; }
@@ -177,7 +181,7 @@
     .toast { position:fixed; left:50%; bottom:24px; z-index:10; transform:translate(-50%,20px); padding:10px 16px; border-radius:999px; color:white; background:#152039; box-shadow:0 10px 25px rgba(0,0,0,.22); opacity:0; pointer-events:none; transition:.2s ease; }
     .toast.show { transform:translate(-50%,0); opacity:1; }
     @media (max-width:560px) {
-      body { padding:0; place-items:stretch; } .app { min-height:100vh; border-radius:0; } header { padding:24px 20px 16px; grid-template-columns:1fr; } .tabs { margin:0 20px; } .panel { padding:20px; } .checks,.number-settings,.number-settings.two { grid-template-columns:1fr; } .result-wrap { grid-template-columns:1fr 1fr; } .result { grid-column:1 / -1; } #password-strength { grid-column:1 / -1; } .copy,.generate-inline { width:100%; min-height:44px; } .faq { margin:16px 20px 0; } .sep-btn { min-height:36px; padding:0 9px; } .phrase-row { grid-template-columns:1fr auto; } .header-tools { grid-area:auto; justify-content:flex-start; } .lang-menu { left:0; right:auto; } .tab { font-size:.86rem; } .check-lists { grid-template-columns:1fr; }
+      body { padding:0; place-items:stretch; } .app { min-height:100vh; border-radius:0; } header { padding:24px 20px 16px; grid-template-columns:1fr; } .tabs { margin:0 20px; } .panel { padding:20px; } .checks,.number-settings,.number-settings.two { grid-template-columns:1fr; } .result-wrap { grid-template-columns:1fr 1fr; } .result { grid-column:1 / -1; } #password-strength { grid-column:1 / -1; } .copy,.generate-inline { width:100%; min-height:44px; } .faq { margin:16px 20px 0; } .sep-btn { min-height:36px; padding:0 9px; } .phrase-row { grid-template-columns:1fr auto; } .header-tools { grid-area:auto; justify-content:flex-start; } .lang-menu { left:0; right:auto; } .tab { font-size:.86rem; } .check-lists { grid-template-columns:1fr; } .setting-groups { grid-template-columns:1fr; }
     }
     .privacy { margin:20px 30px 0; padding:0; background:color-mix(in srgb,var(--success) 7%,var(--surface)); }
     .privacy > summary { padding:14px 18px; }
