@@ -156,10 +156,6 @@ window.PWGEN_I18N.en = {
   "error.invalidUpperBound": "Invalid upper bound.",
   "error.wordListLoadFailed": "The Hungarian word list could not be loaded. Check that the lang folder (hun.js) is available next to index.html.",
 
-  "seo.aria": "About the generator",
-  "seo.title": "Hungarian Password & Passphrase Generator",
-  "seo.description": "Generate strong random passwords and Hungarian passphrases locally in your browser. Generated passwords and passphrases are never sent to a server.",
-
   "faq.title": "Frequently asked questions",
   "faq.q1": "What is a passphrase?",
   "faq.a1": "A passphrase is a password made of several random words, for example “ablak–körte–űrhajó” (window–pear–spaceship). It is usually easier to remember than an equally strong password made of random characters.",

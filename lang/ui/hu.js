@@ -156,10 +156,6 @@ window.PWGEN_I18N.hu = {
   "error.invalidUpperBound": "Érvénytelen felső határ.",
   "error.wordListLoadFailed": "A magyar szólista nem tölthető be. Ellenőrizd, hogy a lang mappa (hun.js) elérhető-e az index.html mellett.",
 
-  "seo.aria": "A generátorról",
-  "seo.title": "Magyar password és passphrase generator",
-  "seo.description": "Az oldal erős random jelszavak és magyar jelmondatok (passphrase-ek) készítésére használható. A generálás helyben történik; a létrehozott jelszó nem kerül elküldésre szerverre.",
-
   "faq.title": "Gyakori kérdések",
   "faq.q1": "Mi az a jelmondat (passphrase)?",
   "faq.a1": "A jelmondat több véletlen szóból álló jelszó, például „ablak–körte–űrhajó”. Általában könnyebb megjegyezni, mint egy hasonlóan erős, véletlen karakterekből álló jelszót.",

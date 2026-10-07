@@ -1,6 +1,6 @@
 <!doctype html>
-<!-- The static HTML intentionally remains in Hungarian (title, meta description, SEO copy,
-     JSON-LD) so that search engines keep indexing the Hungarian content. The UI language is
+<!-- The static HTML intentionally remains in Hungarian (title, meta description, JSON-LD, FAQ
+     text) so that search engines keep indexing the Hungarian content. The UI language is
      chosen at runtime by i18n.js (saved choice -> browser language -> English), and in that case
      document.title and document.documentElement.lang are updated to the user's language too. -->
 <html lang="hu-HU">
@@ -300,15 +300,9 @@
         </details>
       </div>
     </details>
-    <!-- SEO copy: the static HTML source stays in Hungarian (that is what search engines index),
-         while the i18n layer running in the browser translates the displayed text into the
-         selected UI language. Multilingual SEO would need separate language URLs and hreflang. -->
-    <section class="seo-copy" aria-label="A generátorról" data-i18n-aria-label="seo.aria">
-      <h2 data-i18n="seo.title">Magyar password és passphrase generator</h2>
-      <p data-i18n="seo.description">Az oldal erős random jelszavak és magyar jelmondatok (passphrase-ek) készítésére használható. A generálás helyben történik; a létrehozott jelszó nem kerül elküldésre szerverre.</p>
-    </section>
-    <section class="faq" aria-labelledby="faq-title">
-      <h2 id="faq-title" data-i18n="faq.title">Gyakori kérdések</h2>
+    <details class="faq" id="faq-section" aria-labelledby="faq-title">
+      <summary><h2 id="faq-title" data-i18n="faq.title">Gyakori kérdések</h2></summary>
+      <div class="faq-content">
       <h3 data-i18n="faq.q1">Mi az a jelmondat (passphrase)?</h3>
       <p data-i18n="faq.a1">A jelmondat több véletlen szóból álló jelszó, például „ablak–körte–űrhajó”. Általában könnyebb megjegyezni, mint egy hasonlóan erős, véletlen karakterekből álló jelszót.</p>
       <h3 data-i18n="faq.q2">Biztonságos ez a generátor?</h3>
@@ -323,7 +317,8 @@
       <p data-i18n="faq.a6">Az entrópia a generálási folyamat véletlenszerűségét becsüli meg bitekben: minél nagyobb az érték, annál több lehetséges kimenet közül kellene egy támadónak keresnie. A kijelzett érték becslés, amely a maximális hossz szerinti szűrés hatását nem feltétlenül tartalmazza.</p>
       <h3 data-i18n="faq.q7">Jelszó vagy jelmondat: melyiket használjam?</h3>
       <p data-i18n="faq.a7">Mindkettő lehet erős, ha kellően hosszú és véletlen. A jelmondatot általában könnyebb megjegyezni, a generált jelszó pedig ott praktikus, ahol a hossz vagy a használható karakterek köre korlátozott. Az egyes webhelyek követelményei eltérhetnek (hossz, kötelező karaktertípusok); ezeket a „Weboldal követelményei” résznél tudod beállítani.</p>
-    </section>
+      </div>
+    </details>
   </main>
   <div class="toast" id="toast" role="status" aria-live="polite" data-i18n="toast.copied">Vágólapra másolva</div>
 
