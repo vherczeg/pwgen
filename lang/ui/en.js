@@ -158,5 +158,21 @@ window.PWGEN_I18N.en = {
 
   "seo.aria": "About the generator",
   "seo.title": "Hungarian Password & Passphrase Generator",
-  "seo.description": "Generate strong random passwords and Hungarian passphrases locally in your browser. Generated passwords and passphrases are never sent to a server."
+  "seo.description": "Generate strong random passwords and Hungarian passphrases locally in your browser. Generated passwords and passphrases are never sent to a server.",
+
+  "faq.title": "Frequently asked questions",
+  "faq.q1": "What is a passphrase?",
+  "faq.a1": "A passphrase is a password made of several random words, for example “ablak–körte–űrhajó” (window–pear–spaceship). It is usually easier to remember than an equally strong password made of random characters.",
+  "faq.q2": "Is this generator safe?",
+  "faq.a2": "Generation happens in your browser, using its built-in cryptographically secure random number generator, and the generated value never leaves your device. This is not an absolute guarantee of security: protection also depends on how the given service stores and protects the password, whether you use a unique password everywhere, and whether two-factor authentication is enabled.",
+  "faq.q3": "Are generated passwords sent to a server?",
+  "faq.a3": "No. Generation happens entirely in your browser; the password or passphrase that is created is neither transmitted nor stored. The site only loads its own static files and makes no network requests after loading.",
+  "faq.q4": "Why does the passphrase generator use Hungarian words?",
+  "faq.a4": "The passphrase word list consists of 16,384 Hungarian words selected by frequency, because those words are the easiest for Hungarian-speaking users to remember. The UI language is independent of this and can be switched (Hungarian or English).",
+  "faq.q5": "How many words should a passphrase contain?",
+  "faq.a5": "There is no single ideal word count for every situation. More random words provide more entropy; the appropriate value depends on your threat model and the requirements of the service. The generator shows the estimated entropy for every candidate so you can compare settings.",
+  "faq.q6": "What does entropy mean?",
+  "faq.a6": "Entropy estimates how much randomness the generation process contains, measured in bits: the larger the value, the more possible outputs an attacker would have to search through. The displayed value is an estimate and does not necessarily account for the effect of filtering by maximum length.",
+  "faq.q7": "Password or passphrase: which should I use?",
+  "faq.a7": "Both can be strong if they are long enough and random. A passphrase is usually easier to remember, while a generated password is practical where the length or the usable set of characters is limited. Requirements differ between websites (length, mandatory character types); you can configure those under “Website requirements”."
 };

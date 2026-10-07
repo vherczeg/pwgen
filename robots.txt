@@ -1,0 +1,17 @@
+# robots.txt for https://pwgen.herczeg.cc/
+# The site is public and fully crawlable.
+
+User-agent: *
+Allow: /
+
+# OpenAI's search crawler, used for ChatGPT Search discovery: allowed.
+User-agent: OAI-SearchBot
+Allow: /
+
+# OpenAI's model-training crawler. It is a separate crawler from OAI-SearchBot;
+# search visibility does not require opting into model-training crawling, so this
+# one is excluded independently.
+User-agent: GPTBot
+Disallow: /
+
+Sitemap: https://pwgen.herczeg.cc/sitemap.xml
