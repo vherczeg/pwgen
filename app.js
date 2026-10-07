@@ -44,28 +44,271 @@
     return {lower,upper,numbers,symbols,useNumbers,useSymbols};
   }
 
+  // ---- Uniform valid-output generation and its exact entropy ----
+  //
+  // A generated password is described by its class-count tuple (L,U,D,S): how many lowercase,
+  // uppercase, digit and special characters it contains. Only the tuples allowed by the active
+  // constraints are used, and such a tuple covers exactly
+  //     multinomial(n;L,U,D,S) * l^L * u^U * d^D * s^S
+  // different strings (choose the positions class by class, then a character per position).
+  //
+  // Every one of those counts is computed as an EXACT BigInt, the tuples add up to the exact
+  // size of the valid-output space, and the tuple is drawn with an exactly uniform BigInt in
+  // [0, total) - so the generation distribution is uniform over the valid space, with no
+  // floating-point probability and no modulo bias anywhere in the draw (see secureRandomBigInt).
+  // The entropy is log2 of that very same BigInt total, so the displayed value and the sampler
+  // describe one and the same exact valid-output space:
+  //     lastPasswordBits = log2BigInt(total) = log2(number of valid outputs).
+  //
+  // Minimums are floors by construction: no minimum is ever filled from a different class, so
+  // every active constraint holds for every generated value - no rejection loop, no retries.
+  // The maximums cap their class; whatever is left over goes to lowercase/uppercase, which
+  // always appear at least once (L,U >= 1).
+
+  const FACTORIAL_MAX=64;       // the password length selector is capped at 64
+  const BIG_FACTORIAL=[1n];     // n! for n = 0..64, as exact BigInt
+  for(let i=1;i<=FACTORIAL_MAX;i++) BIG_FACTORIAL[i]=BIG_FACTORIAL[i-1]*BigInt(i);
+
+  // "No limit" is the empty option value in the UI; internally unlimited is null.
+  function readMaxLimit(element) {
+    if(!element) return null;
+    if(element.value===""||element.value==null) return null;
+    const value=Number.parseInt(element.value,10);
+    if(!Number.isFinite(value)||value<1) return null;
+    return Math.min(20,value);
+  }
+
+  // Every allowed class-count tuple for a password of `n` characters. The enabled state of the
+  // digit and symbol classes comes from the explicit flags and is NEVER inferred from an
+  // alphabet size: an enabled class with an empty alphabet must not be treated as disabled.
+  function allowedClassCounts(n, sizes, flags) {
+    const tuples=[];
+    const digitLow=flags.numbersEnabled?Math.max(1,flags.minDigits):0;
+    const digitHigh=flags.numbersEnabled?Math.min(flags.maxDigits??n-2,n-2):0;
+    const symbolLow=flags.symbolsEnabled?Math.max(1,flags.minSymbols):0;
+    const symbolHigh=flags.symbolsEnabled?Math.min(flags.maxSymbols??n-2,n-2):0;
+    if(digitLow>digitHigh||symbolLow>symbolHigh) return tuples;
+    for(let D=digitLow;D<=digitHigh;D++) {
+      for(let S=symbolLow;S<=symbolHigh;S++) {
+        const letters=n-D-S;               // L+U, with L,U >= 1 enforced below
+        if(letters<2) continue;
+        for(let L=1;L<=letters-1;L++) tuples.push({lower:L,upper:letters-L,digits:D,symbols:S});
+      }
+    }
+    return tuples;
+  }
+
+  // Exact powers of one class alphabet size, computed once per size (a tuple needs one power
+  // per class, and a BigInt "**" per tuple would dominate the cost at the maximum length).
+  const POWER_TABLES=new Map();
+  function powerTableFor(size) {
+    let table=POWER_TABLES.get(size);
+    if(!table) {
+      table=[1n];
+      const step=BigInt(size);
+      for(let i=1;i<=FACTORIAL_MAX;i++) table[i]=table[i-1]*step;
+      if(POWER_TABLES.size>=16) POWER_TABLES.clear();   // the alphabets are a handful of sizes
+      POWER_TABLES.set(size,table);
+    }
+    return table;
+  }
+
+  // The exact number of distinct strings covered by one tuple: choose the positions class by
+  // class (multinomial), then one character per position from each class alphabet.
+  function tupleOutputCount(tuple, sizes) {
+    const total=tuple.lower+tuple.upper+tuple.digits+tuple.symbols;
+    let count=BIG_FACTORIAL[total]/(BIG_FACTORIAL[tuple.lower]*BIG_FACTORIAL[tuple.upper]
+      *BIG_FACTORIAL[tuple.digits]*BIG_FACTORIAL[tuple.symbols]);
+    if(tuple.lower) count*=powerTableFor(sizes.lower)[tuple.lower];
+    if(tuple.upper) count*=powerTableFor(sizes.upper)[tuple.upper];
+    if(tuple.digits) count*=powerTableFor(sizes.digits)[tuple.digits];
+    if(tuple.symbols) count*=powerTableFor(sizes.symbols)[tuple.symbols];
+    return count;
+  }
+
+  // The exact size of the valid-output space: the tuples are disjoint, so their exact counts
+  // simply add up.
+  function validOutputCount(tuples, sizes) {
+    let total=0n;
+    for(const tuple of tuples) total+=tupleOutputCount(tuple,sizes);
+    return total;
+  }
+
+  // Exact log2 of a positive BigInt. The bit length gives the integer part and the leading 53
+  // bits give the fraction, so the double result is accurate to well under 1e-15 bits - the
+  // entropy is a numerically stable conversion of the exact BigInt count, not an approximation
+  // of the distribution.
+  function log2BigInt(value) {
+    if(value<=0n) return 0;
+    const bits=value.toString(2).length;          // 2^(bits-1) <= value < 2^bits
+    if(bits<=53) return Math.log2(Number(value));
+    const shift=BigInt(bits-53);
+    return Number(shift)+Math.log2(Number(value>>shift));
+  }
+
+  // Entropy of the generation process: log2 of the very same exact total the sampler draws from.
+  function passwordEntropyBits(tuples, sizes) { return log2BigInt(validOutputCount(tuples,sizes)); }
+
+  // A uniform BigInt in [0, bound) from crypto.getRandomValues, by rejection sampling:
+  // the raw draw is uniform over [0, 2^bits) (the surplus high bits of the first byte are
+  // cleared, which keeps it uniform) and every value >= bound is rejected and redrawn whole.
+  // Rejecting the entire draw - instead of reducing it modulo bound - is what makes the result
+  // exactly uniform: each accepted value is reached by the same number of raw draws, and since
+  // 2^(bits-1) <= bound the acceptance probability is always >= 1/2.
+  // An empty range is a programming error, not a random draw: bound <= 0 throws instead of
+  // silently returning a value that is not inside [0, bound).
+  function secureRandomBigInt(bound) {
+    if(bound<=0n) throw new RangeError("secureRandomBigInt: bound must be positive, got "+bound);
+    if(bound===1n) return 0n;                          // exactly one possible value
+    const bits=bound.toString(2).length;               // 2^(bits-1) <= bound < 2^bits
+    const byteCount=Math.ceil(bits/8);
+    const buffer=new Uint8Array(byteCount);
+    const surplus=byteCount*8-bits;
+    for(;;) {
+      crypto.getRandomValues(buffer);
+      if(surplus) buffer[0]&=0xff>>>surplus;
+      let value=0n;
+      for(let i=0;i<byteCount;i++) value=(value<<8n)|BigInt(buffer[i]);
+      if(value<bound) return value;
+    }
+  }
+
+  // Chooses a tuple with probability EXACTLY proportional to its exact output count.
+  function sampleTupleFromWeights(tuples, weights, total) {
+    if(tuples.length===1) return tuples[0];
+    if(total<=0n) return tuples[secureRandomInt(tuples.length)];   // defensive, cannot happen
+    const target=secureRandomBigInt(total);
+    let cumulative=0n;
+    for(let i=0;i<tuples.length;i++) {
+      cumulative+=weights[i];
+      if(target<cumulative) return tuples[i];
+    }
+    return tuples[tuples.length-1];   // unreachable: target < total === cumulative
+  }
+
+  // Convenience wrapper for callers that only have the tuples (recomputes the exact weights).
+  function sampleClassCounts(tuples, sizes) {
+    if(tuples.length===1) return tuples[0];
+    const weights=tuples.map(tuple=>tupleOutputCount(tuple,sizes));
+    let total=0n;
+    for(const weight of weights) total+=weight;
+    return sampleTupleFromWeights(tuples,weights,total);
+  }
+
+  // The exact valid-output space of one configuration: the allowed tuples, their exact weights
+  // and the exact total. The key covers every input that influences the weights, so the cache
+  // can only ever return the space of the very configuration it was asked for.
+  let passwordSpaceCache=null;
+  function passwordSpace(length, sizes, flags) {
+    const key=length+"|"+sizes.lower+"|"+sizes.upper+"|"+sizes.digits+"|"+sizes.symbols+"|"
+      +(flags.numbersEnabled?1:0)+(flags.symbolsEnabled?1:0)+"|"
+      +flags.minDigits+"|"+flags.maxDigits+"|"+flags.minSymbols+"|"+flags.maxSymbols;
+    if(passwordSpaceCache&&passwordSpaceCache.key===key) return passwordSpaceCache;
+    const tuples=allowedClassCounts(length,sizes,flags);
+    const weights=[];
+    let total=0n;
+    for(const tuple of tuples) {
+      const weight=tupleOutputCount(tuple,sizes);
+      weights.push(weight);
+      total+=weight;
+    }
+    passwordSpaceCache={key,tuples,weights,total};
+    return passwordSpaceCache;
+  }
+
+  // Applies the length rule's step 3 to a pair of minimums. Exactly one lowercase and one
+  // uppercase are reserved, so the digit and symbol minimums may use the whole reserved room:
+  //     minDigits + minSymbols <= cap   (cap = length - 2)
+  // Nothing is reduced while that holds, so length 8 with 3 digits + 3 symbols stays 3 + 3
+  // (3 + 3 + 1 + 1 = 8 is a complete password). When a reduction is needed, the class that was
+  // NOT edited last gives way first, and an enabled class never drops below 1.
+  function fitPasswordMinimums(minDigits, minSymbols, cap, numbersEnabled, symbolsEnabled, preferDigits) {
+    let digits=numbersEnabled?Math.min(clampInteger(minDigits,1,20),cap):0;
+    let symbols=symbolsEnabled?Math.min(clampInteger(minSymbols,1,20),cap):0;
+    if(!numbersEnabled||!symbolsEnabled||digits+symbols<=cap) return {minDigits:digits,minSymbols:symbols};
+    if(preferDigits) {
+      symbols=Math.max(1,cap-digits);
+      digits=Math.min(digits,cap-symbols);
+    } else {
+      digits=Math.max(1,cap-symbols);
+      symbols=Math.min(symbols,cap-digits);
+    }
+    return {minDigits:digits,minSymbols:symbols};
+  }
+
+  // Deterministic reconciliation of the password limits ("latest edit wins", no popups):
+  // an enabled class can never be capped at 0, one lowercase and one uppercase are always
+  // reserved (that is the whole meaning of cap = length - 2), and the digit and symbol minimums
+  // may use that entire reserved room: minDigits + minSymbols <= cap.
+  function reconcilePasswordLimits(changed) {
+    const length=Number($("#password-length").value);
+    const cap=length-2;
+    const numbersEnabled=$("#use-numbers").checked, symbolsEnabled=$("#use-symbols").checked;
+    let minDigits=numbersEnabled?Number.parseInt($("#min-numbers").value,10)||1:0;
+    let minSymbols=symbolsEnabled?Number.parseInt($("#min-symbols").value,10)||1:0;
+    let maxDigits=numbersEnabled?readMaxLimit($("#max-numbers")):null;
+    let maxSymbols=symbolsEnabled?readMaxLimit($("#max-symbols")):null;
+    // A finite maximum can never exceed the physically possible count of its class (n - 2).
+    if(maxDigits!==null) maxDigits=Math.min(Math.max(1,maxDigits),cap);
+    if(maxSymbols!==null) maxSymbols=Math.min(Math.max(1,maxSymbols),cap);
+    // Latest edit wins, but only when the ordering actually needs correcting: an edited maximum
+    // pulls its minimum down, an edited minimum pushes its maximum up.
+    if(numbersEnabled&&maxDigits!==null&&minDigits>maxDigits) {
+      if(changed===$("#max-numbers")) minDigits=maxDigits; else maxDigits=minDigits;
+    }
+    if(symbolsEnabled&&maxSymbols!==null&&minSymbols>maxSymbols) {
+      if(changed===$("#max-symbols")) minSymbols=maxSymbols; else maxSymbols=minSymbols;
+    }
+    // The class whose minimum was edited last is the one that is kept; a length edit (or any
+    // other edit) keeps the larger minimum, so the smaller one gives way.
+    const editedDigits=changed===$("#min-numbers"), editedSymbols=changed===$("#min-symbols");
+    const preferDigits=editedDigits?true:(editedSymbols?false:minDigits>=minSymbols);
+    const fitted=fitPasswordMinimums(minDigits,minSymbols,cap,numbersEnabled,symbolsEnabled,preferDigits);
+    minDigits=fitted.minDigits; minSymbols=fitted.minSymbols;
+    // A finite maximum stays inside [minimum, cap]: never below its minimum, never above the
+    // physically possible count.
+    if(numbersEnabled&&maxDigits!==null) maxDigits=Math.min(Math.max(maxDigits,minDigits),cap);
+    if(symbolsEnabled&&maxSymbols!==null) maxSymbols=Math.min(Math.max(maxSymbols,minSymbols),cap);
+    $("#min-numbers").value=numbersEnabled?String(minDigits):"0";
+    $("#min-symbols").value=symbolsEnabled?String(minSymbols):"0";
+    $("#max-numbers").value=(!numbersEnabled||maxDigits===null)?"":String(maxDigits);
+    $("#max-symbols").value=(!symbolsEnabled||maxSymbols===null)?"":String(maxSymbols);
+  }
+
   function generatePassword() {
     const length=Number($("#password-length").value), g=passwordGroups();
     lastPasswordLength=length;
     if (!g.lower.length || !g.upper.length) return;
+    // An ENABLED special-character class with an empty usable alphabet is a configuration error,
+    // not "symbols disabled": nothing is generated and the user is told what to fix. (The enabled
+    // state is never inferred from the alphabet size - see allowedClassCounts.)
     if (g.useSymbols && !g.symbols.length) { $("#password-result").textContent=t("password.needSymbol"); lastPasswordBits=0; showQuality(0,$("#password-bits"),$("#password-quality")); return; }
-    let minNumbers=g.useNumbers?clampInteger($("#min-numbers").value,1,20):0;
-    let minSymbols=g.useSymbols?clampInteger($("#min-symbols").value,1,20):0;
-    $("#min-numbers").value=minNumbers; $("#min-symbols").value=minSymbols;
-    const mandatory=2+minNumbers+minSymbols;
-    if (mandatory>length) { $("#password-result").textContent=t("password.minGreaterThanLength",{count:mandatory}); lastPasswordBits=0; showQuality(0,$("#password-bits"),$("#password-quality")); return; }
-    const pool=g.lower+g.upper+g.numbers+g.symbols;
-    const out=[pick(g.lower),pick(g.upper)];
-    for(let i=0;i<minNumbers;i++) out.push(pick(g.numbers));
-    for(let i=0;i<minSymbols;i++) out.push(pick(g.symbols));
-    while(out.length<length) out.push(pick(pool));
+    const sizes={lower:g.lower.length,upper:g.upper.length,digits:g.numbers.length,symbols:g.symbols.length};
+    const flags={
+      numbersEnabled:g.useNumbers, symbolsEnabled:g.useSymbols,
+      minDigits:g.useNumbers?clampInteger($("#min-numbers").value,1,20):0,
+      maxDigits:g.useNumbers?readMaxLimit($("#max-numbers")):null,
+      minSymbols:g.useSymbols?clampInteger($("#min-symbols").value,1,20):0,
+      maxSymbols:g.useSymbols?readMaxLimit($("#max-symbols")):null
+    };
+    // The exact valid-output space (allowed tuples, their exact weights and their exact total) is
+    // the single source for the draw AND the entropy, so the two can never describe different
+    // spaces; passwordSpace() also caches it per configuration.
+    const space=passwordSpace(length,sizes,flags);
+    // Defensive: reconciliation keeps this unreachable. With no allowed tuple the active
+    // constraints cannot be satisfied at this length, so nothing is generated.
+    if(!space.tuples.length) { $("#password-result").textContent=""; lastPasswordBits=0; showQuality(0,$("#password-bits"),$("#password-quality")); return; }
+    const counts=sampleTupleFromWeights(space.tuples,space.weights,space.total);
+    const out=[];
+    for(let i=0;i<counts.lower;i++) out.push(pick(g.lower));
+    for(let i=0;i<counts.upper;i++) out.push(pick(g.upper));
+    for(let i=0;i<counts.digits;i++) out.push(pick(g.numbers));
+    for(let i=0;i<counts.symbols;i++) out.push(pick(g.symbols));
+    if(out.length!==length) return;   // cannot happen; never display a wrong-length value
     $("#password-result").textContent=secureShuffle(out).join("");
-    // Conservative estimate: the extra entropy contributed by the random shuffle is not included.
-    let bits=Math.log2(g.lower.length)+Math.log2(g.upper.length);
-    if(minNumbers) bits+=minNumbers*Math.log2(g.numbers.length);
-    if(minSymbols) bits+=minSymbols*Math.log2(g.symbols.length);
-    bits+=(length-mandatory)*Math.log2(pool.length);
-    lastPasswordBits=bits; showQuality(bits,$("#password-bits"),$("#password-quality"));
+    // Exact entropy of the displayed generation process: log2 of the very same valid-output count.
+    lastPasswordBits=log2BigInt(space.total);
+    showQuality(lastPasswordBits,$("#password-bits"),$("#password-quality"));
   }
 
   function log2Combination(n,k) { if(k<0||k>n)return -Infinity; k=Math.min(k,n-k); let r=0; for(let i=1;i<=k;i++) r+=Math.log2(n-k+i)-Math.log2(i); return r; }
@@ -441,7 +684,7 @@
     entropyInfoIndex=null;
     entropyInfoTrigger=$("#password-info");
     fillEntropyInfoForBits(Math.round(lastPasswordBits));
-    mountEntropyInfoAfter($("#password-strength"));
+    mountEntropyInfoAfter($("#password-result-area"));
     $("#entropy-info").hidden=false;
     if(entropyInfoTrigger) entropyInfoTrigger.setAttribute("aria-expanded","true");
     const close=$("#entropy-info-close");
@@ -688,12 +931,18 @@
     }
   }
 
-  function syncPasswordMinimums() {
+  // Keeps the two limit controls of a category in sync with that category, and writes the
+  // canonical min/max values back into the DOM. The actual limit reconciliation is
+  // deterministic and lives in reconcilePasswordLimits(); this function only enables/disables
+  // and clamps, so it is safe to call while the user is still editing.
+  function syncPasswordLimits() {
     const numbersEnabled = $("#use-numbers").checked;
     const symbolsEnabled = $("#use-symbols").checked;
 
     $("#min-numbers").disabled = !numbersEnabled;
+    $("#max-numbers").disabled = !numbersEnabled;
     $("#min-symbols").disabled = !symbolsEnabled;
+    $("#max-symbols").disabled = !symbolsEnabled;
 
     if (numbersEnabled) {
       $("#min-numbers").min = "1";
@@ -701,12 +950,24 @@
     } else {
       $("#min-numbers").value = "0";
     }
-
     if (symbolsEnabled) {
       $("#min-symbols").min = "1";
       $("#min-symbols").value = String(clampInteger($("#min-symbols").value, 1, 20));
     } else {
       $("#min-symbols").value = "0";
+    }
+
+    if (numbersEnabled) {
+      const maxDigits = readMaxLimit($("#max-numbers"));
+      $("#max-numbers").value = maxDigits === null ? "" : String(maxDigits);
+    } else {
+      $("#max-numbers").value = "";
+    }
+    if (symbolsEnabled) {
+      const maxSymbols = readMaxLimit($("#max-symbols"));
+      $("#max-symbols").value = maxSymbols === null ? "" : String(maxSymbols);
+    } else {
+      $("#max-symbols").value = "";
     }
   }
 
@@ -741,18 +1002,23 @@
   $("#generate-password").addEventListener("click",generatePassword);
   $("#generate-phrase").addEventListener("click",generatePassphrase);
   $("#password-length").addEventListener("input",e=>{$("#password-length-value").value=e.target.value;});
-  ["#use-numbers","#use-symbols"].forEach(id=>$(id).addEventListener("change",syncPasswordMinimums));
-  $("#avoid-ambiguous").addEventListener("change",()=>{});
-  ["#min-numbers","#min-symbols","#symbol-set"].forEach(id=>$(id).addEventListener("input",()=>{}));
-  $("#candidate-count").addEventListener("input",e=>{
-    $("#candidate-count-value").value=e.target.value;
-    syncCandidateCount();
-  });
+  // Commit: reconcile the limits against the final length, then exactly one generation.
+  $("#password-length").addEventListener("change",()=>{reconcilePasswordLimits($("#password-length"));generatePassword();});
+  ["#use-numbers","#use-symbols"].forEach(id=>$(id).addEventListener("change",()=>{syncPasswordLimits();reconcilePasswordLimits($(id));generatePassword();}));   // commit: sync limits, then exactly one generation
+  $("#avoid-ambiguous").addEventListener("change",generatePassword);
+  // While editing, only the deterministic UI state is kept in sync (display only, no draw).
+  ["#min-numbers","#min-symbols","#max-numbers","#max-symbols"].forEach(id=>$(id).addEventListener("input",()=>{syncPasswordLimits();}));
+  // Commit: "latest edit wins" reconciliation, then exactly one generation.
+  ["#min-numbers","#min-symbols","#max-numbers","#max-symbols"].forEach(id=>$(id).addEventListener("change",()=>{syncPasswordLimits();reconcilePasswordLimits($(id));generatePassword();}));
+  $("#symbol-set").addEventListener("input",()=>{});   // nothing to validate while typing
+  $("#symbol-set").addEventListener("change",generatePassword);   // commit: apply once
+  $("#candidate-count").addEventListener("input",e=>{ $("#candidate-count-value").value=e.target.value; });   // live number only
+  $("#candidate-count").addEventListener("change",syncCandidateCount);                                       // commit: rebuild once with the final count
   $("#word-count").addEventListener("input",e=>{
     $("#word-count-value").value=e.target.value;
-    syncPhraseNumberBlocks();
-    rebuildCandidates();
+    syncPhraseNumberBlocks();       // deterministic: keeps the guaranteed-number UI valid while dragging
   });
+  $("#word-count").addEventListener("change",rebuildCandidates);   // commit: regenerate once with the final word count
   document.querySelectorAll(".sep-btn").forEach(button=>{
     // The "123" button has no data-sep attribute: it toggles the random digit separator.
     if(button.dataset.sep===undefined) button.addEventListener("click",toggleRandomDigitSeparator);
@@ -771,9 +1037,11 @@
   });
   $("#max-length-custom").addEventListener("input",()=>{
     generationLengthFailure=null;
-    updateLengthWarning();
-    renderCandidates();
+    updateLengthWarning();          // display only while typing
   });
+  // Committed custom maximum length: recalculate/re-filter the existing candidates once.
+  // renderCandidates() is deterministic here: it does not generate and does not truncate.
+  $("#max-length-custom").addEventListener("change",renderCandidates);
   ["#require-upper","#require-digit","#require-special","#forbid-space"].forEach(id=>{
     $(id).addEventListener("change",renderCandidates);   // recalculates only, does not generate
   });
@@ -803,10 +1071,12 @@
   });
   document.addEventListener("keydown",event=>{ if(event.key==="Escape") closeEntropyInfo(true); });
   $("#separator-chars").addEventListener("input",()=>{
-    normalizeSeparatorField();
+    normalizeSeparatorField();      // filtering/normalisation only while typing
     syncSeparatorButtons();
-    rerollSeparatorsAndRender();
   });
+  // Committed separator set: draw the separators once. Enter fires change natively, so
+  // committing with Enter does not trigger a second regeneration on blur.
+  $("#separator-chars").addEventListener("change",rerollSeparatorsAndRender);
   document.querySelectorAll('input[name="capital-mode"]').forEach(radio=>{
     radio.addEventListener("change",()=>{
       const mode=capitalMode();
@@ -816,10 +1086,12 @@
       renderCandidates();
     });
   });
+  // While typing, only the dependent UI (min/max/count validity) is kept in sync;
+  // candidate generation waits for the committed value.
   ["#number-block-count","#number-min-digits","#number-max-digits"].forEach(id=>$(id).addEventListener("input",event=>{
     syncPhraseNumberBlocks(event.target);
-    rebuildCandidates();
   }));
+  ["#number-block-count","#number-min-digits","#number-max-digits"].forEach(id=>$(id).addEventListener("change",rebuildCandidates));
   document.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",()=>copyResult(b.dataset.copy)));
 
   // Language switch: ONLY the visible texts are refreshed. No new password or passphrase is
@@ -858,7 +1130,8 @@
   syncMaxLengthRow();
   updateLengthWarning();
   updateSettingSummaries();
-  syncPasswordMinimums();
+  syncPasswordLimits();
+  reconcilePasswordLimits(null);
   syncPhraseNumberBlocks();
   syncSeparatorButtons();
   switchTab("phrase");
