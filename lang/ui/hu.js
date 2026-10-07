@@ -158,5 +158,21 @@ window.PWGEN_I18N.hu = {
 
   "seo.aria": "A generátorról",
   "seo.title": "Magyar password és passphrase generator",
-  "seo.description": "Az oldal erős random jelszavak és magyar jelmondatok (passphrase-ek) készítésére használható. A generálás helyben történik; a létrehozott jelszó nem kerül elküldésre szerverre."
+  "seo.description": "Az oldal erős random jelszavak és magyar jelmondatok (passphrase-ek) készítésére használható. A generálás helyben történik; a létrehozott jelszó nem kerül elküldésre szerverre.",
+
+  "faq.title": "Gyakori kérdések",
+  "faq.q1": "Mi az a jelmondat (passphrase)?",
+  "faq.a1": "A jelmondat több véletlen szóból álló jelszó, például „ablak–körte–űrhajó”. Általában könnyebb megjegyezni, mint egy hasonlóan erős, véletlen karakterekből álló jelszót.",
+  "faq.q2": "Biztonságos ez a generátor?",
+  "faq.a2": "A generálás a böngésződben, a beépített kriptográfiailag biztonságos véletlenszám-generátorral történik, és a generált érték nem hagyja el a készülékedet. Ez nem jelent abszolút biztonságot: a védelem attól is függ, hogyan tárolja és védi a jelszót az adott szolgáltatás, hogy mindenhol egyedi jelszót használsz-e, és hogy be van-e kapcsolva a kétfaktoros hitelesítés.",
+  "faq.q3": "Elküldi a generált jelszavakat egy szerverre?",
+  "faq.a3": "Nem. A generálás teljes egészében a böngésződben történik; a létrehozott jelszó vagy jelmondat nem kerül elküldésre és nem kerül tárolásra. Az oldal csak a saját statikus fájljait tölti be, és a betöltés után nem indít hálózati kérést.",
+  "faq.q4": "Miért magyar szavakat használ a jelmondat-generátor?",
+  "faq.a4": "A jelmondat-szólista 16 384 gyakoriság alapján válogatott magyar szóból áll, mert ezek a szavak a magyar nyelvű felhasználóknak a legkönnyebben megjegyezhetők. A felület nyelve ettől függetlenül váltható (magyar vagy angol).",
+  "faq.q5": "Hány szóból álljon egy jelmondat?",
+  "faq.a5": "Nincs minden helyzetre érvényes ideális szószám. Több véletlen szó nagyobb entrópiát ad; a megfelelő érték a fenyegetésmodelltől és az adott szolgáltatás követelményeitől függ. A generátor minden jelölt mellett megmutatja a becsült entrópiát, így összehasonlíthatod a beállításokat.",
+  "faq.q6": "Mit jelent az entrópia?",
+  "faq.a6": "Az entrópia a generálási folyamat véletlenszerűségét becsüli meg bitekben: minél nagyobb az érték, annál több lehetséges kimenet közül kellene egy támadónak keresnie. A kijelzett érték becslés, amely a maximális hossz szerinti szűrés hatását nem feltétlenül tartalmazza.",
+  "faq.q7": "Jelszó vagy jelmondat: melyiket használjam?",
+  "faq.a7": "Mindkettő lehet erős, ha kellően hosszú és véletlen. A jelmondatot általában könnyebb megjegyezni, a generált jelszó pedig ott praktikus, ahol a hossz vagy a használható karakterek köre korlátozott. Az egyes webhelyek követelményei eltérhetnek (hossz, kötelező karaktertípusok); ezeket a „Weboldal követelményei” résznél tudod beállítani."
 };

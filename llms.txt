@@ -1,0 +1,21 @@
+# PWGen
+
+> Free browser-based password and Hungarian passphrase generator.
+
+Official site: https://pwgen.herczeg.cc/
+Source code: https://github.com/vherczeg/pwgen
+
+Key facts:
+- Passwords and passphrases are generated locally in the browser with window.crypto.getRandomValues().
+- Generated passwords and passphrases are never transmitted to or stored by the site.
+- Copying a generated value to the clipboard happens locally in the browser.
+- The site uses no analytics, no cookies, no tracking and no third-party runtime resources.
+- After its own static files have loaded, the application performs no network requests.
+- The passphrase generator currently uses a Hungarian word list of 16,384 words.
+- The user interface is available in Hungarian and English.
+- The source code is public and inspectable: https://github.com/vherczeg/pwgen
+- Limitation: no generator can guarantee absolute security; the protection of an account also depends on how the service stores and protects the password, and on factors such as using a unique password per service and enabling two-factor authentication.
+
+Note: this file is an optional, experimental documentation aid. It is not a
+documented requirement for Google, Bing or OpenAI search discovery, and it does
+not replace robots.txt, sitemap.xml or normal crawlable HTML.
