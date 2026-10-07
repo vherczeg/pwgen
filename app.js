@@ -441,7 +441,7 @@
     entropyInfoIndex=null;
     entropyInfoTrigger=$("#password-info");
     fillEntropyInfoForBits(Math.round(lastPasswordBits));
-    mountEntropyInfoAfter($("#password-strength"));
+    mountEntropyInfoAfter($(".result-wrap"));
     $("#entropy-info").hidden=false;
     if(entropyInfoTrigger) entropyInfoTrigger.setAttribute("aria-expanded","true");
     const close=$("#entropy-info-close");

@@ -68,6 +68,10 @@
     <section class="panel" id="password-panel" role="tabpanel" aria-labelledby="password-tab" hidden>
       <div class="result-wrap">
         <div class="result" id="password-result" aria-live="polite"></div>
+        <div class="strength-block" id="password-strength">
+          <span class="bits-line"><span class="bits" id="password-bits"></span><button class="info-btn" id="password-info" type="button" aria-expanded="false" data-i18n-aria-label="entropy.infoAria">ⓘ</button></span>
+          <span class="quality-line"><span class="meter meter-sm" id="password-meter" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></span><span class="quality" id="password-quality"></span></span>
+        </div>
         <button class="copy" type="button" data-copy="password-result" data-i18n="actions.copy">Másolás</button>
         <button class="generate-inline" id="generate-password" type="button" data-i18n="actions.newPassword">Új jelszó</button>
       </div>
@@ -105,9 +109,6 @@
           </div>
         </details>
 
-        <div class="strength-block" id="password-strength">
-          <span class="bits-line"><span class="bits" id="password-bits"></span><button class="info-btn" id="password-info" type="button" aria-expanded="false" data-i18n-aria-label="entropy.infoAria">ⓘ</button></span>
-          <span class="quality-line"><span class="meter meter-sm" id="password-meter" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></span><span class="quality" id="password-quality"></span></span>
         </div>
       </div>
     </section>
