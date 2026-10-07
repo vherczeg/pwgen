@@ -613,7 +613,7 @@
       if(!list || !list.length) throw new Error("lang/hun.js did not load (window.HU_WORDS is missing).");
       hungarianWords=(Array.isArray(list)?list:String(list).split(/\r?\n/)).map(s=>String(s).trim()).filter(Boolean);
       if(hungarianWords.length!==16384) console.warn("Word list has "+hungarianWords.length+" entries, expected 16384.");
-      $("#word-list-size").textContent=hungarianWords.length.toLocaleString(document.documentElement.lang || "hu-HU");
+      renderWordListSize();
       $("#generate-phrase").disabled=false;
       generatePassphrase();
     } catch(err) {
@@ -760,6 +760,14 @@
     if(lastPasswordBits===null) return;
     showQuality(lastPasswordBits,$("#password-bits"),$("#password-quality"));
   }
+  // Word-list size: display only. It formats the already loaded array with the current
+  // document language, so a language switch re-formats the number without reloading the
+  // word list and without touching any generated value.
+  function renderWordListSize() {
+    if(!hungarianWords.length) return;
+    const size=$("#word-list-size");
+    if(size) size.textContent=hungarianWords.length.toLocaleString(document.documentElement.lang || "hu-HU");
+  }
   function refreshTextsOnLanguageChange() {
     candidateRows.forEach(row=>{
       row.button.textContent=t("actions.copy");
@@ -768,6 +776,7 @@
     renderCandidates();          // display only: re-rendering the stored candidates
     updateLengthWarning();
     refreshPasswordStatus();
+    renderWordListSize();
     if (window.PWGEN_CHECK) window.PWGEN_CHECK.relabel();
     const message=$("#phrase-message");
     if(!hungarianWords.length && message && !message.hidden) message.textContent=t("error.wordListLoadFailed");
