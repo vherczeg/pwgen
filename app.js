@@ -1,13 +1,16 @@
   "use strict";
   const $ = s => document.querySelector(s);
+  // Fordítási segédfüggvény (i18n.js definiálja). Ha a nyelvi motor valamiért nem
+  // töltődött be, a kulcs jelenik meg a szöveg helyén – nem omlik össze az alkalmazás.
+  const t = (key, vars) => (typeof window.t === "function" ? window.t(key, vars) : key);
   const AMBIGUOUS = new Set(["I","l","1","O","0"]);
   const BASE_LOWER = "abcdefghijklmnopqrstuvwxyz";
   const BASE_UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const BASE_NUMBERS = "0123456789";
-  let hungarianWords = [];
+  let hungarianWords = []; let lastPasswordBits=null;
 
   function secureRandomInt(max) {
-    if (!Number.isSafeInteger(max) || max <= 0) throw new RangeError("Érvénytelen felső határ.");
+    if (!Number.isSafeInteger(max) || max <= 0) throw new RangeError(t("error.invalidUpperBound"));
     const range = 0x100000000, limit = range - (range % max), b = new Uint32Array(1);
     do crypto.getRandomValues(b); while (b[0] >= limit);
     return b[0] % max;
@@ -19,14 +22,14 @@
   function uniqueChars(chars) { return [...new Set([...chars])].join(""); }
   // Hatfokozatú, tájékoztató jellegű UX-besorolás (nem hivatalos szabvány).
   function qualityForBits(bits) {
-    if(bits>=80) return {label:"Nagyon erős",c:"very-strong"};
-    if(bits>=65) return {label:"Erős",c:"strong"};
-    if(bits>=55) return {label:"Jó",c:"good"};
-    if(bits>=45) return {label:"Közepes",c:"medium"};
-    if(bits>=35) return {label:"Gyenge",c:"weak"};
-    return {label:"Nagyon gyenge",c:"very-weak"};
+    if(bits>=80) return {label:t("quality.veryStrong"),c:"very-strong"};
+    if(bits>=65) return {label:t("quality.strong"),c:"strong"};
+    if(bits>=55) return {label:t("quality.good"),c:"good"};
+    if(bits>=45) return {label:t("quality.medium"),c:"medium"};
+    if(bits>=35) return {label:t("quality.weak"),c:"weak"};
+    return {label:t("quality.veryWeak"),c:"very-weak"};
   }
-  function showQuality(bits,bitsEl,qEl) { const q=qualityForBits(bits); bitsEl.textContent=`Becsült entrópia: ${Math.round(bits)} bit`; qEl.textContent=q.label; qEl.className=`quality ${q.c}`; }
+  function showQuality(bits,bitsEl,qEl) { const q=qualityForBits(bits); bitsEl.textContent=t("password.bits",{bits:Math.round(bits)}); qEl.textContent=q.label; qEl.className=`quality ${q.c}`; }
 
   function passwordGroups() {
     const lower=filterAmbiguous(BASE_LOWER), upper=filterAmbiguous(BASE_UPPER);
@@ -39,12 +42,12 @@
   function generatePassword() {
     const length=Number($("#password-length").value), g=passwordGroups();
     if (!g.lower.length || !g.upper.length) return;
-    if (g.useSymbols && !g.symbols.length) { $("#password-result").textContent="Adj meg legalább egy speciális karaktert!"; showQuality(0,$("#password-bits"),$("#password-quality")); return; }
+    if (g.useSymbols && !g.symbols.length) { $("#password-result").textContent=t("password.needSymbol"); lastPasswordBits=0; showQuality(0,$("#password-bits"),$("#password-quality")); return; }
     let minNumbers=g.useNumbers?clampInteger($("#min-numbers").value,1,20):0;
     let minSymbols=g.useSymbols?clampInteger($("#min-symbols").value,1,20):0;
     $("#min-numbers").value=minNumbers; $("#min-symbols").value=minSymbols;
     const mandatory=2+minNumbers+minSymbols;
-    if (mandatory>length) { $("#password-result").textContent=`A minimum karakterek száma (${mandatory}) nagyobb a jelszó hosszánál.`; showQuality(0,$("#password-bits"),$("#password-quality")); return; }
+    if (mandatory>length) { $("#password-result").textContent=t("password.minGreaterThanLength",{count:mandatory}); lastPasswordBits=0; showQuality(0,$("#password-bits"),$("#password-quality")); return; }
     const pool=g.lower+g.upper+g.numbers+g.symbols;
     const out=[pick(g.lower),pick(g.upper)];
     for(let i=0;i<minNumbers;i++) out.push(pick(g.numbers));
@@ -56,7 +59,7 @@
     if(minNumbers) bits+=minNumbers*Math.log2(g.numbers.length);
     if(minSymbols) bits+=minSymbols*Math.log2(g.symbols.length);
     bits+=(length-mandatory)*Math.log2(pool.length);
-    showQuality(bits,$("#password-bits"),$("#password-quality"));
+    lastPasswordBits=bits; showQuality(bits,$("#password-bits"),$("#password-quality"));
   }
 
   function log2Combination(n,k) { if(k<0||k>n)return -Infinity; k=Math.min(k,n-k); let r=0; for(let i=1;i<=k;i++) r+=Math.log2(n-k+i)-Math.log2(i); return r; }
@@ -257,11 +260,11 @@
   function checkWebsiteRequirements(text,req) {
     const r=req ?? websiteRequirements();
     const reasons=[];
-    if(r.max!==null && characterLength(text)>r.max) reasons.push(`⚠ ${characterLength(text)} karakter, a maximum ${r.max}.`);
-    if(r.upper && !/\p{Lu}/u.test(text)) reasons.push("⚠ Hiányzik a szükséges nagybetű.");
-    if(r.digit && !/[0-9]/.test(text)) reasons.push("⚠ Hiányzik a szükséges szám.");
-    if(r.special && !hasSpecialCharacter(text)) reasons.push("⚠ Hiányzik a szükséges speciális karakter.");
-    if(r.noSpace && /\s/.test(text)) reasons.push("⚠ A jelmondat szóközt tartalmaz.");
+    if(r.max!==null && characterLength(text)>r.max) reasons.push(t("validation.tooLong",{current:characterLength(text),max:r.max}));
+    if(r.upper && !/\p{Lu}/u.test(text)) reasons.push(t("validation.missingUppercase"));
+    if(r.digit && !/[0-9]/.test(text)) reasons.push(t("validation.missingDigit"));
+    if(r.special && !hasSpecialCharacter(text)) reasons.push(t("validation.missingSpecial"));
+    if(r.noSpace && /\s/.test(text)) reasons.push(t("validation.forbiddenSpace"));
     return {ok:reasons.length===0,reasons};
   }
 
@@ -297,7 +300,7 @@
     const element=$("#length-warning");
     element.hidden=generationLengthFailure===null;
     if(generationLengthFailure!==null) {
-      element.textContent=`⚠ A jelenlegi beállításokkal nem sikerült ${generationLengthFailure} karakter alatti jelmondatot generálni.`;
+      element.textContent=t("validation.lengthFailure",{max:generationLengthFailure});
     }
   }
 
@@ -313,12 +316,12 @@
       });
     });
     element.hidden=false;
-    element.textContent=reasons.length?reasons.join("\n"):"✓ Minden jelölt megfelel a megadott követelményeknek.";
+    element.textContent=reasons.length?reasons.join("\n"):t("compat.allOk");
   }
 
   // A harmonikák összecsukott összefoglalói (csak megjelenítés, nem generál semmit).
-  const CAPITAL_MODE_LABELS={none:"Nincs",all:"Minden szó",one:"Egy véletlen szó",oneUpper:"Egy véletlen szó CSUPA NAGYBETŰ"};
-  const NUMBER_PRESET_LABELS={none:"Nincs",one:"1 szám",two:"2 szám"};
+  const CAPITAL_MODE_KEYS={none:"capital.none",all:"capital.all",one:"capital.one",oneUpper:"capital.oneUpper"}; const capitalModeLabel=mode=>t(CAPITAL_MODE_KEYS[mode] ?? "capital.none");
+  const NUMBER_PRESET_KEYS={none:"numbers.none",one:"numbers.one",two:"numbers.two"}; const numberPresetLabel=preset=>t(NUMBER_PRESET_KEYS[preset] ?? "numbers.none");
 
   function updateSettingSummaries() {
     const preset=numberPreset();
@@ -327,22 +330,22 @@
       const minD=clampInteger($("#number-min-digits").value,1,12);
       const maxD=clampInteger($("#number-max-digits").value,minD,12);
       $("#summary-numbers").textContent=blocks===0
-        ?"Egyéni · nincs blokk"
-        :`Egyéni · ${blocks} blokk · ${minD===maxD?minD:minD+"–"+maxD} számjegy`;
+        ?t("summary.customNoBlock")
+        :t("summary.customBlocks",{blocks,digits:minD===maxD?minD:minD+"–"+maxD});
     } else {
-      $("#summary-numbers").textContent=NUMBER_PRESET_LABELS[preset] ?? "Nincs";
+      $("#summary-numbers").textContent=numberPresetLabel(preset);
     }
 
-    $("#summary-capital").textContent=CAPITAL_MODE_LABELS[capitalMode()] ?? "Nincs";
+    $("#summary-capital").textContent=capitalModeLabel(capitalMode());
 
     const parts=[];
     const max=activeMaxLength();
-    if(max!==null) parts.push(`Max. ${max}`);
-    if($("#require-upper").checked) parts.push("Nagybetű");
-    if($("#require-digit").checked) parts.push("Szám");
-    if($("#require-special").checked) parts.push("Speciális");
-    if($("#forbid-space").checked) parts.push("Nincs szóköz");
-    $("#summary-website").textContent=parts.length?parts.join(" · "):"Nincs";
+    if(max!==null) parts.push(t("summary.max",{max}));
+    if($("#require-upper").checked) parts.push(t("summary.upper"));
+    if($("#require-digit").checked) parts.push(t("summary.digit"));
+    if($("#require-special").checked) parts.push(t("summary.special"));
+    if($("#forbid-space").checked) parts.push(t("summary.noSpace"));
+    $("#summary-website").textContent=parts.length?parts.join(" · "):t("summary.none");
   }
 
   // A státusz-oszlop: entrópia · hossz / minőség / weboldal-kompatibilitás.
@@ -351,11 +354,11 @@
     const bits=candidateBits(candidate);
     const quality=qualityForBits(bits);
     const check=checkWebsiteRequirements(phrase);
-    row.bits.textContent=`${Math.round(bits)} bit · ${characterLength(phrase)} karakter`;
+    row.bits.textContent=t("candidate.status",{bits:Math.round(bits),length:characterLength(phrase)});
     row.quality.textContent=quality.label;
     row.quality.className=`quality ${quality.c}`;
     row.compat.hidden=!websiteRequirementsActive();
-    row.compat.textContent=check.ok?"✓ Megfelel":"⚠ Nem felel meg";
+    row.compat.textContent=check.ok?t("compat.ok"):t("compat.bad");
     row.compat.className=`compat ${check.ok?"ok":"bad"}`;
   }
 
@@ -377,11 +380,11 @@
 
   function fillEntropyInfo(candidate) {
     const bits=Math.round(candidateBits(candidate));
-    $("#entropy-info-value").textContent=`${bits} bit ≈ 2${superscriptNumber(bits)} lehetséges kimenet.`;
+    $("#entropy-info-value").textContent=t("entropy.value",{bits,sup:superscriptNumber(bits)});
     const decimal=decimalPossibilities(bits);
     const countLine=$("#entropy-info-count");
     countLine.hidden=decimal===null;
-    countLine.textContent=decimal===null?"":`≈ ${decimal} lehetséges kimenet`;
+    countLine.textContent=decimal===null?"":t("entropy.count",{count:decimal});
     // A hosszkorlát szűkíti az elfogadott kimenetek halmazát; a becslés ezt nem tartalmazza.
     $("#entropy-info-caveat").hidden=activeMaxLength()===null;
   }
@@ -528,13 +531,13 @@
       const bits=document.createElement("span"); bits.className="bits";
       const info=document.createElement("button");
       info.type="button"; info.className="info-btn"; info.textContent="ⓘ";
-      info.setAttribute("aria-label","Entrópia magyarázata");
+      info.setAttribute("aria-label",t("entropy.infoAria"));
       info.setAttribute("aria-expanded","false");
       bitsLine.appendChild(bits); bitsLine.appendChild(info);
       const quality=document.createElement("span"); quality.className="quality";
       const compat=document.createElement("span"); compat.className="compat"; compat.hidden=true;
       strength.appendChild(bitsLine); strength.appendChild(quality); strength.appendChild(compat);
-      const button=document.createElement("button"); button.type="button"; button.className="copy"; button.textContent="Másolás";
+      const button=document.createElement("button"); button.type="button"; button.className="copy"; button.textContent=t("actions.copy");
       button.addEventListener("click",()=>copyText(text.textContent));
       const index=candidateRows.length;
       info.addEventListener("click",event=>{ if(event&&event.stopPropagation) event.stopPropagation(); toggleEntropyInfo(index); });
@@ -590,22 +593,22 @@
 
   function switchTab(name) { const p=name==="password"; $("#password-tab").setAttribute("aria-selected",p); $("#phrase-tab").setAttribute("aria-selected",!p); $("#password-panel").hidden=!p; $("#phrase-panel").hidden=p; }
   let toastTimer;
-  function showToast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("show"),1500);}
-  async function copyText(text){try{await navigator.clipboard.writeText(text);}catch{const ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();}showToast("Vágólapra másolva");}
+  function showToast(msg){const toast=$("#toast");toast.textContent=msg;toast.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove("show"),1500);}
+  async function copyText(text){try{await navigator.clipboard.writeText(text);}catch{const ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();}showToast(t("toast.copied"));}
   async function copyResult(id){await copyText(document.getElementById(id).textContent);}
 
   async function loadWordList(){
     try {
       const list=window.HU_WORDS;
-      if(!list || !list.length) throw new Error("A lang/hun.js nem töltődött be (window.HU_WORDS hiányzik).");
+      if(!list || !list.length) throw new Error("lang/hun.js did not load (window.HU_WORDS is missing).");
       hungarianWords=(Array.isArray(list)?list:String(list).split(/\r?\n/)).map(s=>String(s).trim()).filter(Boolean);
-      if(hungarianWords.length!==16384) console.warn(`A szólista ${hungarianWords.length} sort tartalmaz, nem 16384-et.`);
-      $("#word-list-size").textContent=hungarianWords.length.toLocaleString("hu-HU");
+      if(hungarianWords.length!==16384) console.warn("Word list has "+hungarianWords.length+" entries, expected 16384.");
+      $("#word-list-size").textContent=hungarianWords.length.toLocaleString(document.documentElement.lang || "hu-HU");
       $("#generate-phrase").disabled=false;
       generatePassphrase();
     } catch(err) {
       console.error(err);
-      $("#phrase-message").textContent="A magyar szólista nem tölthető be. Ellenőrizd, hogy a lang mappa (hun.js) elérhető-e az index.html mellett.";
+      $("#phrase-message").textContent=t("error.wordListLoadFailed");
       $("#phrase-message").hidden=false;
     }
   }
@@ -738,6 +741,26 @@
     rebuildCandidates();
   }));
   document.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",()=>copyResult(b.dataset.copy)));
+
+  // Nyelvváltás: KIZÁRÓLAG a látható szövegek frissülnek. Nem generálunk új jelszót
+  // vagy jelmondatot, nem sorsolunk új elválasztót, számblokkot vagy nagybetű-célt, és
+  // a már megjelenített értékek karakter szerint változatlanok maradnak.
+  function refreshPasswordStatus() {
+    if(lastPasswordBits===null) return;
+    showQuality(lastPasswordBits,$("#password-bits"),$("#password-quality"));
+  }
+  function refreshTextsOnLanguageChange() {
+    candidateRows.forEach(row=>{
+      row.button.textContent=t("actions.copy");
+      row.info.setAttribute("aria-label",t("entropy.infoAria"));
+    });
+    renderCandidates();          // csak megjelenítés: a tárolt jelöltek újrarajzolása
+    updateLengthWarning();
+    refreshPasswordStatus();
+    const message=$("#phrase-message");
+    if(!hungarianWords.length && message && !message.hidden) message.textContent=t("error.wordListLoadFailed");
+  }
+  if(window.PWGEN_L10N) window.PWGEN_L10N.onLanguageChange(refreshTextsOnLanguageChange);
 
   activeCapitalMode=capitalMode();
   syncNumberPresetRow();
