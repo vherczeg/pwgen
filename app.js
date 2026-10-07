@@ -741,9 +741,11 @@
   $("#generate-password").addEventListener("click",generatePassword);
   $("#generate-phrase").addEventListener("click",generatePassphrase);
   $("#password-length").addEventListener("input",e=>{$("#password-length-value").value=e.target.value;});
-  ["#use-numbers","#use-symbols"].forEach(id=>$(id).addEventListener("change",syncPasswordMinimums));
-  $("#avoid-ambiguous").addEventListener("change",()=>{});
+  $("#password-length").addEventListener("change",generatePassword);      // commit: exactly one generation with the final length
+  ["#use-numbers","#use-symbols"].forEach(id=>$(id).addEventListener("change",()=>{syncPasswordMinimums();generatePassword();}));   // commit: sync minimums, then exactly one generation
+  $("#avoid-ambiguous").addEventListener("change",generatePassword);
   ["#min-numbers","#min-symbols","#symbol-set"].forEach(id=>$(id).addEventListener("input",()=>{}));
+  ["#min-numbers","#min-symbols","#symbol-set"].forEach(id=>$(id).addEventListener("change",generatePassword));   // commit: apply once
   $("#candidate-count").addEventListener("input",e=>{
     $("#candidate-count-value").value=e.target.value;
     syncCandidateCount();
