@@ -591,7 +591,17 @@
     rebuildCandidates();
   }
 
-  function switchTab(name) { const p=name==="password"; $("#password-tab").setAttribute("aria-selected",p); $("#phrase-tab").setAttribute("aria-selected",!p); $("#password-panel").hidden=!p; $("#phrase-panel").hidden=p; }
+  // Three tabs: the selected panel is visible, the others are hidden. Leaving the
+  // "Password Check" tab clears every entered value and analysis (privacy behaviour).
+  const TAB_IDS = { phrase: ["#phrase-tab", "#phrase-panel"], password: ["#password-tab", "#password-panel"], check: ["#check-tab", "#check-panel"] };
+  function switchTab(name) {
+    Object.keys(TAB_IDS).forEach(key => {
+      const [tabSelector, panelSelector] = TAB_IDS[key];
+      $(tabSelector).setAttribute("aria-selected", key === name);
+      $(panelSelector).hidden = key !== name;
+    });
+    if (name !== "check" && window.PWGEN_CHECK) window.PWGEN_CHECK.reset();
+  }
   let toastTimer;
   function showToast(msg){const toast=$("#toast");toast.textContent=msg;toast.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove("show"),1500);}
   async function copyText(text){try{await navigator.clipboard.writeText(text);}catch{const ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();}showToast(t("toast.copied"));}
@@ -661,6 +671,7 @@
   }
 
   $("#password-tab").addEventListener("click",()=>switchTab("password"));
+  $("#check-tab").addEventListener("click",()=>switchTab("check"));
   $("#phrase-tab").addEventListener("click",()=>switchTab("phrase"));
   $("#generate-password").addEventListener("click",generatePassword);
   $("#generate-phrase").addEventListener("click",generatePassphrase);
@@ -757,6 +768,7 @@
     renderCandidates();          // display only: re-rendering the stored candidates
     updateLengthWarning();
     refreshPasswordStatus();
+    if (window.PWGEN_CHECK) window.PWGEN_CHECK.relabel();
     const message=$("#phrase-message");
     if(!hungarianWords.length && message && !message.hidden) message.textContent=t("error.wordListLoadFailed");
   }
