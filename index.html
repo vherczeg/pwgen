@@ -1,6 +1,6 @@
 <!doctype html>
-<!-- The static HTML intentionally remains in Hungarian (title, meta description, SEO copy,
-     JSON-LD) so that search engines keep indexing the Hungarian content. The UI language is
+<!-- The static HTML intentionally remains in Hungarian (title, meta description, JSON-LD, FAQ
+     text) so that search engines keep indexing the Hungarian content. The UI language is
      chosen at runtime by i18n.js (saved choice -> browser language -> English), and in that case
      document.title and document.documentElement.lang are updated to the user's language too. -->
 <html lang="hu-HU">
@@ -62,6 +62,7 @@
     <div class="tabs" role="tablist" data-i18n-aria-label="tabs.groupAria">
       <button class="tab" id="phrase-tab" role="tab" aria-controls="phrase-panel" aria-selected="true" data-i18n="tabs.passphrase">Jelmondat</button>
       <button class="tab" id="password-tab" role="tab" aria-controls="password-panel" aria-selected="false" data-i18n="tabs.password">Jelszó</button>
+      <button class="tab" id="check-tab" role="tab" aria-controls="check-panel" aria-selected="false" data-i18n="tabs.check">Jelszó ellenőrzése</button>
     </div>
 
     <section class="panel" id="password-panel" role="tabpanel" aria-labelledby="password-tab" hidden>
@@ -236,6 +237,40 @@
       </div>
     </section>
 
+    <section class="panel" id="check-panel" role="tabpanel" aria-labelledby="check-tab" hidden>
+      <p class="help check-privacy" data-i18n="check.privacy">🔒 Az ellenőrzés teljes egészében ezen az eszközön, a böngészőben történik. A megadott jelszót nem küldjük el, nem tároljuk és nem naplózzuk.</p>
+      <div class="field">
+        <div class="field-head">
+          <label for="check-input" data-i18n="check.label">Ellenőrizendő jelszó</label>
+          <button type="button" class="toggle-visibility" id="check-toggle" aria-pressed="false" aria-controls="check-input" data-i18n="check.show" data-i18n-aria-label="check.showAria">Megjelenítés</button>
+        </div>
+        <input id="check-input" class="text-input" type="password" maxlength="256" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-describedby="check-limit-note">
+        <p class="help" id="check-limit-note" hidden data-i18n="check.limitNote">A rendszer legfeljebb 256 karaktert elemez, és a teljes megadott értéket vizsgálja.</p>
+      </div>
+      <p class="help check-empty" id="check-empty" data-i18n="check.empty">Írj be egy jelszót az elemzéshez.</p>
+      <div class="check-result" id="check-result" hidden>
+        <div class="check-meter" id="check-meter" role="img" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+        <div class="check-summary" aria-live="polite" aria-atomic="true">
+          <p class="check-rating"><span class="quality" id="check-quality"></span></p>
+          <p class="check-line"><span data-i18n="check.guessesLabel">Becsült próbálkozásszám:</span> <strong id="check-guesses"></strong></p>
+          <p class="check-line"><span data-i18n="check.lengthLabel">Jelszó hossza:</span> <strong id="check-length"></strong></p>
+        </div>
+        <div class="check-lists">
+          <div>
+            <p class="legend" data-i18n="check.strengthsTitle">Megfigyelt erősségek</p>
+            <ul class="privacy-list" id="check-strengths"></ul>
+          </div>
+          <div>
+            <p class="legend" data-i18n="check.weaknessesTitle">Lehetséges gyengeségek</p>
+            <ul class="privacy-list" id="check-weaknesses"></ul>
+          </div>
+        </div>
+        <p class="help" id="check-recommendation"></p>
+        <p class="help" id="check-uncertainty" hidden data-i18n="check.wordUncertainty">Több szótári szót találtunk egymás mellett. Az értékelés óvatos: feltételezi, hogy a szavakat egy ember választotta a leggyakoribb szavak közül. Ha a szavakat valóban egymástól függetlenül, véletlenszerűen választották egy nagy szólistából, a tényleges ellenállás nagyobb lehet, mint a becslés.</p>
+        <p class="help" data-i18n="check.caveat">A feltörési idő nem jósolható meg pontosan. Függ a szolgáltatás jelszótárolásától, a próbálkozások korlátozásától, a támadás módjától és a támadó hardverétől.</p>
+      </div>
+    </section>
+
     <details class="privacy" id="privacy-section" aria-labelledby="privacy-title">
       <summary><h2 id="privacy-title" data-i18n="security.title">🔒 Biztonság és adatvédelem – 100% helyi generálás</h2></summary>
       <div class="advanced-body">
@@ -265,15 +300,9 @@
         </details>
       </div>
     </details>
-    <!-- SEO copy: the static HTML source stays in Hungarian (that is what search engines index),
-         while the i18n layer running in the browser translates the displayed text into the
-         selected UI language. Multilingual SEO would need separate language URLs and hreflang. -->
-    <section class="seo-copy" aria-label="A generátorról" data-i18n-aria-label="seo.aria">
-      <h2 data-i18n="seo.title">Magyar password és passphrase generator</h2>
-      <p data-i18n="seo.description">Az oldal erős random jelszavak és magyar jelmondatok (passphrase-ek) készítésére használható. A generálás helyben történik; a létrehozott jelszó nem kerül elküldésre szerverre.</p>
-    </section>
-    <section class="faq" aria-labelledby="faq-title">
-      <h2 id="faq-title" data-i18n="faq.title">Gyakori kérdések</h2>
+    <details class="faq" id="faq-section" aria-labelledby="faq-title">
+      <summary><h2 id="faq-title" data-i18n="faq.title">Gyakori kérdések</h2></summary>
+      <div class="faq-content">
       <h3 data-i18n="faq.q1">Mi az a jelmondat (passphrase)?</h3>
       <p data-i18n="faq.a1">A jelmondat több véletlen szóból álló jelszó, például „ablak–körte–űrhajó”. Általában könnyebb megjegyezni, mint egy hasonlóan erős, véletlen karakterekből álló jelszót.</p>
       <h3 data-i18n="faq.q2">Biztonságos ez a generátor?</h3>
@@ -288,7 +317,8 @@
       <p data-i18n="faq.a6">Az entrópia a generálási folyamat véletlenszerűségét becsüli meg bitekben: minél nagyobb az érték, annál több lehetséges kimenet közül kellene egy támadónak keresnie. A kijelzett érték becslés, amely a maximális hossz szerinti szűrés hatását nem feltétlenül tartalmazza.</p>
       <h3 data-i18n="faq.q7">Jelszó vagy jelmondat: melyiket használjam?</h3>
       <p data-i18n="faq.a7">Mindkettő lehet erős, ha kellően hosszú és véletlen. A jelmondatot általában könnyebb megjegyezni, a generált jelszó pedig ott praktikus, ahol a hossz vagy a használható karakterek köre korlátozott. Az egyes webhelyek követelményei eltérhetnek (hossz, kötelező karaktertípusok); ezeket a „Weboldal követelményei” résznél tudod beállítani.</p>
-    </section>
+      </div>
+    </details>
   </main>
   <div class="toast" id="toast" role="status" aria-live="polite" data-i18n="toast.copied">Vágólapra másolva</div>
 
@@ -300,6 +330,7 @@
   <script src="lang/ui/hu.js"></script>
   <script src="lang/ui/en.js"></script>
   <script src="i18n.js"></script>
+  <script src="checker.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
