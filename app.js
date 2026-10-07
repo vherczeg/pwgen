@@ -1,13 +1,16 @@
   "use strict";
   const $ = s => document.querySelector(s);
+  // Translation helper (defined by i18n.js). If the language engine fails to load, the key
+  // itself is shown in place of the text, so the application still works.
+  const t = (key, vars) => (typeof window.t === "function" ? window.t(key, vars) : key);
   const AMBIGUOUS = new Set(["I","l","1","O","0"]);
   const BASE_LOWER = "abcdefghijklmnopqrstuvwxyz";
   const BASE_UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const BASE_NUMBERS = "0123456789";
-  let hungarianWords = [];
+  let hungarianWords = []; let lastPasswordBits=null;
 
   function secureRandomInt(max) {
-    if (!Number.isSafeInteger(max) || max <= 0) throw new RangeError("Érvénytelen felső határ.");
+    if (!Number.isSafeInteger(max) || max <= 0) throw new RangeError(t("error.invalidUpperBound"));
     const range = 0x100000000, limit = range - (range % max), b = new Uint32Array(1);
     do crypto.getRandomValues(b); while (b[0] >= limit);
     return b[0] % max;
@@ -17,16 +20,16 @@
   function clampInteger(v,min,max) { const n=Number.parseInt(v,10); return Number.isFinite(n)?Math.min(max,Math.max(min,n)):min; }
   function filterAmbiguous(chars) { return $("#avoid-ambiguous").checked ? [...chars].filter(c=>!AMBIGUOUS.has(c)).join("") : chars; }
   function uniqueChars(chars) { return [...new Set([...chars])].join(""); }
-  // Hatfokozatú, tájékoztató jellegű UX-besorolás (nem hivatalos szabvány).
+  // Six-level, informational UX rating (not an official standard).
   function qualityForBits(bits) {
-    if(bits>=80) return {label:"Nagyon erős",c:"very-strong"};
-    if(bits>=65) return {label:"Erős",c:"strong"};
-    if(bits>=55) return {label:"Jó",c:"good"};
-    if(bits>=45) return {label:"Közepes",c:"medium"};
-    if(bits>=35) return {label:"Gyenge",c:"weak"};
-    return {label:"Nagyon gyenge",c:"very-weak"};
+    if(bits>=80) return {label:t("quality.veryStrong"),c:"very-strong"};
+    if(bits>=65) return {label:t("quality.strong"),c:"strong"};
+    if(bits>=55) return {label:t("quality.good"),c:"good"};
+    if(bits>=45) return {label:t("quality.medium"),c:"medium"};
+    if(bits>=35) return {label:t("quality.weak"),c:"weak"};
+    return {label:t("quality.veryWeak"),c:"very-weak"};
   }
-  function showQuality(bits,bitsEl,qEl) { const q=qualityForBits(bits); bitsEl.textContent=`Becsült entrópia: ${Math.round(bits)} bit`; qEl.textContent=q.label; qEl.className=`quality ${q.c}`; }
+  function showQuality(bits,bitsEl,qEl) { const q=qualityForBits(bits); bitsEl.textContent=t("password.bits",{bits:Math.round(bits)}); qEl.textContent=q.label; qEl.className=`quality ${q.c}`; }
 
   function passwordGroups() {
     const lower=filterAmbiguous(BASE_LOWER), upper=filterAmbiguous(BASE_UPPER);
@@ -39,24 +42,24 @@
   function generatePassword() {
     const length=Number($("#password-length").value), g=passwordGroups();
     if (!g.lower.length || !g.upper.length) return;
-    if (g.useSymbols && !g.symbols.length) { $("#password-result").textContent="Adj meg legalább egy speciális karaktert!"; showQuality(0,$("#password-bits"),$("#password-quality")); return; }
+    if (g.useSymbols && !g.symbols.length) { $("#password-result").textContent=t("password.needSymbol"); lastPasswordBits=0; showQuality(0,$("#password-bits"),$("#password-quality")); return; }
     let minNumbers=g.useNumbers?clampInteger($("#min-numbers").value,1,20):0;
     let minSymbols=g.useSymbols?clampInteger($("#min-symbols").value,1,20):0;
     $("#min-numbers").value=minNumbers; $("#min-symbols").value=minSymbols;
     const mandatory=2+minNumbers+minSymbols;
-    if (mandatory>length) { $("#password-result").textContent=`A minimum karakterek száma (${mandatory}) nagyobb a jelszó hosszánál.`; showQuality(0,$("#password-bits"),$("#password-quality")); return; }
+    if (mandatory>length) { $("#password-result").textContent=t("password.minGreaterThanLength",{count:mandatory}); lastPasswordBits=0; showQuality(0,$("#password-bits"),$("#password-quality")); return; }
     const pool=g.lower+g.upper+g.numbers+g.symbols;
     const out=[pick(g.lower),pick(g.upper)];
     for(let i=0;i<minNumbers;i++) out.push(pick(g.numbers));
     for(let i=0;i<minSymbols;i++) out.push(pick(g.symbols));
     while(out.length<length) out.push(pick(pool));
     $("#password-result").textContent=secureShuffle(out).join("");
-    // Konzervatív becslés: a véletlen shuffle plusz entrópiáját nem számoljuk hozzá.
+    // Conservative estimate: the extra entropy contributed by the random shuffle is not included.
     let bits=Math.log2(g.lower.length)+Math.log2(g.upper.length);
     if(minNumbers) bits+=minNumbers*Math.log2(g.numbers.length);
     if(minSymbols) bits+=minSymbols*Math.log2(g.symbols.length);
     bits+=(length-mandatory)*Math.log2(pool.length);
-    showQuality(bits,$("#password-bits"),$("#password-quality"));
+    lastPasswordBits=bits; showQuality(bits,$("#password-bits"),$("#password-quality"));
   }
 
   function log2Combination(n,k) { if(k<0||k>n)return -Infinity; k=Math.min(k,n-k); let r=0; for(let i=1;i<=k;i++) r+=Math.log2(n-k+i)-Math.log2(i); return r; }
@@ -66,25 +69,25 @@
   let candidateRows = [];
   let activeCapitalMode = "none";
 
-  // Az "Elválasztó karakterek" mező az egyetlen forrás; a gombok csak szerkesztik azt.
-  // A mezőben a pontos "123" a véletlen számjegy elválasztó (RANDOM_DIGIT) egyetlen
-  // reprezentációja. Minden más számjegy érvénytelen literálként, a nem számjegy
-  // karakterek pedig literál elválasztók.
+  // The "separator characters" field is the single source of truth; the buttons only edit it.
+  // In this field the exact string "123" is the only representation of the random digit
+  // separator (RANDOM_DIGIT). Any other digit is an invalid literal, while non-digit
+  // characters are literal separators.
   const RANDOM_DIGIT_TOKEN="123";
 
   function parseSeparatorField() {
     let rest=$("#separator-chars").value, randomDigit=false;
     if(rest.includes(RANDOM_DIGIT_TOKEN)) {
       randomDigit=true;
-      // Minden további előfordulás ugyanaz az EGY token, nem növeli a súlyozást.
+      // Any further occurrence refers to the same SINGLE token and does not increase the weighting.
       rest=rest.split(RANDOM_DIGIT_TOKEN).join("");
     }
     const literals=[...new Set([...rest].filter(ch=>!/[0-9]/.test(ch)))];
     return {literals,randomDigit};
   }
 
-  // A választható elválasztók: a literál karakterek + opcionálisan a véletlen számjegy (null).
-  // A "123" így pontosan EGY választásnak számít, nem tíznek és nem háromnak.
+  // The available separators are the literal characters plus, optionally, the random digit
+  // (null), so "123" counts as exactly ONE choice - not ten, and not three.
   function separatorOptions() {
     const {literals,randomDigit}=parseSeparatorField();
     if(randomDigit) literals.push(null);
@@ -100,18 +103,18 @@
     return option===null?String(secureRandomInt(10)):option;
   }
 
-  // Unicode-tudatos hossz: minden látható karakter egynek számít (kódpontonként).
+  // Unicode-aware length: every visible character counts as one (per code point).
   function characterLength(text) { return [...text].length; }
 
-  // Egy jelölt elválasztói (szóhatáronként egy), hogy a hossz kiszámítható és
-  // a maximális hossz szerinti elvetés (rejection) értelmes legyen.
+  // The separators of a single candidate (one per word boundary), so that its length is
+  // computable and rejection against the maximum length is meaningful.
   function rollCandidateSeparators(candidate) {
     const options=separatorOptions();
     candidate.separators=Array.from({length:Math.max(0,candidate.words.length-1)},()=>options.length?renderSeparator(pick(options)):"");
   }
 
-  // Kanonikus forma: a "123" token legfeljebb egyszer szerepel, minden más számjegy
-  // (akár csonka töredék) eltűnik, a literálok sorrendje és a beszúrási pozíció marad.
+  // Canonical form: the "123" token appears at most once, every other digit (even a partial
+  // fragment) disappears, and the order of the literals and the caret position are preserved.
   function normalizeSeparatorField() {
     const input=$("#separator-chars");
     const raw=input.value;
@@ -121,8 +124,8 @@
         out+=RANDOM_DIGIT_TOKEN; tokenUsed=true; i+=RANDOM_DIGIT_TOKEN.length; continue;
       }
       const ch=raw[i++];
-      if(/[0-9]/.test(ch)) continue;   // számjegy literál elválasztóként érvénytelen
-      if(out.includes(ch)) continue;   // nincs duplikált literál
+      if(/[0-9]/.test(ch)) continue;   // a digit is not valid as a literal separator
+      if(out.includes(ch)) continue;   // no duplicate literal
       out+=ch;
     }
     if(out===raw) return;
@@ -135,7 +138,7 @@
   function syncSeparatorButtons() {
     const {literals,randomDigit}=parseSeparatorField();
     document.querySelectorAll(".sep-btn").forEach(button=>{
-      // A "123" gombnak nincs data-sep attribútuma: állapota a mezőben lévő pontos token.
+      // The "123" button has no data-sep attribute: its state is the exact token in the field.
       const active=button.dataset.sep===undefined ? randomDigit : literals.includes(button.dataset.sep);
       button.classList.toggle("active",active);
       button.setAttribute("aria-pressed",active?"true":"false");
@@ -152,7 +155,7 @@
     rerollSeparatorsAndRender();
   }
 
-  // A "123" gomb a mezőbe írja, illetve onnan törli a pontos tokent (nincs külön állapot).
+  // The "123" button writes the exact token into the field or removes it from there (no separate state).
   function toggleRandomDigitSeparator() {
     const input=$("#separator-chars");
     if(parseSeparatorField().randomDigit) input.value=input.value.split(RANDOM_DIGIT_TOKEN).join("");
@@ -163,14 +166,14 @@
     rerollSeparatorsAndRender();
   }
 
-  // Egy jelölt szókészlete (a "Szavak száma" csúszka maximumáig), hogy a szavak
-  // számának módosítása ne sorsolja újra a már megjelenített szavakat.
+  // The word pool of a single candidate (up to the maximum of the "number of words" slider), so
+  // that changing the word count does not re-draw the words already displayed.
   function buildCandidateWordPool() {
     const maxWords=Number($("#word-count").max) || 10;
     return Array.from({length:maxWords},()=>pick(hungarianWords));
   }
 
-  // "Garantált számok" előbeállítások: a meglévő számblokk-mezőket vezérlik.
+  // "Guaranteed numbers" presets: they drive the existing number-block fields.
   const NUMBER_PRESETS={none:{blocks:0,min:1,max:1},one:{blocks:1,min:1,max:1},two:{blocks:2,min:1,max:1}};
 
   function numberPreset() {
@@ -182,7 +185,7 @@
     $("#custom-number-settings").hidden=numberPreset()!=="custom";
   }
 
-  // Előbeállítás váltása: a szavak/szókészletek megmaradnak, csak a garantált számok újulnak.
+  // When switching presets, the existing words/word pools are preserved; only the guaranteed numbers are regenerated.
   function applyNumberPreset(value) {
     const preset=NUMBER_PRESETS[value];
     if(preset) {
@@ -195,7 +198,7 @@
     rebuildCandidates();
   }
 
-  // A szerkezeti beállítások egyszer, minden jelöltre közösen (és a mezők visszaklamppolása).
+  // Read the structural settings once for all candidates, clamping the input fields back into range as needed.
   function phraseSettings() {
     const count=Number($("#word-count").value);
     const blocks=clampInteger($("#number-block-count").value,0,count);
@@ -210,7 +213,7 @@
     return {count,blocks,minD,maxD};
   }
 
-  // ---- Weboldal követelményei: ELLENŐRZÉS, nem generátor-beállítás ----
+  // ---- Website requirements: VALIDATION, not a generator setting ----
   const MAX_LENGTH_MIN=8, MAX_LENGTH_MAX=128, MAX_LENGTH_ATTEMPTS=200;
   let generationLengthFailure=null;
 
@@ -250,22 +253,22 @@
     return r.max!==null || r.upper || r.digit || r.special || r.noSpace;
   }
 
-  // Speciális karakter: nem betű, nem számjegy, nem whitespace. A szóköz NEM az.
+  // Special character: not a letter, not a digit and not whitespace. A space is NOT a special character.
   function hasSpecialCharacter(text) { return [...text].some(ch=>!/[\p{L}\p{N}\s]/u.test(ch)); }
 
-  // A TÉNYLEGES generált szöveget ellenőrzi (nem a beállításokat, nem a lehetőségeket).
+  // Checks the ACTUAL generated text (not the settings and not the available options).
   function checkWebsiteRequirements(text,req) {
     const r=req ?? websiteRequirements();
     const reasons=[];
-    if(r.max!==null && characterLength(text)>r.max) reasons.push(`⚠ ${characterLength(text)} karakter, a maximum ${r.max}.`);
-    if(r.upper && !/\p{Lu}/u.test(text)) reasons.push("⚠ Hiányzik a szükséges nagybetű.");
-    if(r.digit && !/[0-9]/.test(text)) reasons.push("⚠ Hiányzik a szükséges szám.");
-    if(r.special && !hasSpecialCharacter(text)) reasons.push("⚠ Hiányzik a szükséges speciális karakter.");
-    if(r.noSpace && /\s/.test(text)) reasons.push("⚠ A jelmondat szóközt tartalmaz.");
+    if(r.max!==null && characterLength(text)>r.max) reasons.push(t("validation.tooLong",{current:characterLength(text),max:r.max}));
+    if(r.upper && !/\p{Lu}/u.test(text)) reasons.push(t("validation.missingUppercase"));
+    if(r.digit && !/[0-9]/.test(text)) reasons.push(t("validation.missingDigit"));
+    if(r.special && !hasSpecialCharacter(text)) reasons.push(t("validation.missingSpecial"));
+    if(r.noSpace && /\s/.test(text)) reasons.push(t("validation.forbiddenSpace"));
     return {ok:reasons.length===0,reasons};
   }
 
-  // A tényleges, másolható szöveg: szavak + számblokkok + elválasztók + nagybetűzés.
+  // The actual, copyable text: words + number blocks + separators + capitalization.
   function candidatePhrase(candidate) {
     const mode=capitalMode();
     const parts=candidate.words.map(({word,digits,side},index)=>{
@@ -277,10 +280,10 @@
     return phrase;
   }
 
-  // Új jelölt a maximális hossz betartásával: a TELJES jelöltet (szavak, számok,
-  // elválasztók, nagybetűzés) előállítjuk, és ha hosszabb a maximumnál, elvetjük.
-  // Semmit nem csonkítunk és nem rövidítünk; ha a határ nem érhető el, a legutolsó
-  // (túl hosszú) jelölt marad, és a kompatibilitás-ellenőrzés jelzi a túllépést.
+  // A new candidate that respects the maximum length: the COMPLETE candidate (words, numbers,
+  // separators, capitalization) is built and discarded when it is longer than the maximum.
+  // Nothing is truncated or shortened; if the limit cannot be met, the last (too long)
+  // candidate is kept and the compatibility check reports the overshoot.
   function buildCandidateWithMaxLength(settings,nextPool,capTarget) {
     const max=activeMaxLength();
     let candidate=null;
@@ -297,11 +300,11 @@
     const element=$("#length-warning");
     element.hidden=generationLengthFailure===null;
     if(generationLengthFailure!==null) {
-      element.textContent=`⚠ A jelenlegi beállításokkal nem sikerült ${generationLengthFailure} karakter alatti jelmondatot generálni.`;
+      element.textContent=t("validation.lengthFailure",{max:generationLengthFailure});
     }
   }
 
-  // Kompakt visszajelzés a weboldal-követelményekről (a látható jelöltek egyedi hiányosságai).
+  // Compact feedback about the website requirements (the distinct shortcomings of the visible candidates).
   function updateWebsiteFeedback() {
     const element=$("#website-feedback");
     const req=websiteRequirements();
@@ -313,12 +316,12 @@
       });
     });
     element.hidden=false;
-    element.textContent=reasons.length?reasons.join("\n"):"✓ Minden jelölt megfelel a megadott követelményeknek.";
+    element.textContent=reasons.length?reasons.join("\n"):t("compat.allOk");
   }
 
-  // A harmonikák összecsukott összefoglalói (csak megjelenítés, nem generál semmit).
-  const CAPITAL_MODE_LABELS={none:"Nincs",all:"Minden szó",one:"Egy véletlen szó",oneUpper:"Egy véletlen szó CSUPA NAGYBETŰ"};
-  const NUMBER_PRESET_LABELS={none:"Nincs",one:"1 szám",two:"2 szám"};
+  // The collapsed accordion summaries (display only; nothing is generated).
+  const CAPITAL_MODE_KEYS={none:"capital.none",all:"capital.all",one:"capital.one",oneUpper:"capital.oneUpper"}; const capitalModeLabel=mode=>t(CAPITAL_MODE_KEYS[mode] ?? "capital.none");
+  const NUMBER_PRESET_KEYS={none:"numbers.none",one:"numbers.one",two:"numbers.two"}; const numberPresetLabel=preset=>t(NUMBER_PRESET_KEYS[preset] ?? "numbers.none");
 
   function updateSettingSummaries() {
     const preset=numberPreset();
@@ -327,39 +330,39 @@
       const minD=clampInteger($("#number-min-digits").value,1,12);
       const maxD=clampInteger($("#number-max-digits").value,minD,12);
       $("#summary-numbers").textContent=blocks===0
-        ?"Egyéni · nincs blokk"
-        :`Egyéni · ${blocks} blokk · ${minD===maxD?minD:minD+"–"+maxD} számjegy`;
+        ?t("summary.customNoBlock")
+        :t("summary.customBlocks",{blocks,digits:minD===maxD?minD:minD+"–"+maxD});
     } else {
-      $("#summary-numbers").textContent=NUMBER_PRESET_LABELS[preset] ?? "Nincs";
+      $("#summary-numbers").textContent=numberPresetLabel(preset);
     }
 
-    $("#summary-capital").textContent=CAPITAL_MODE_LABELS[capitalMode()] ?? "Nincs";
+    $("#summary-capital").textContent=capitalModeLabel(capitalMode());
 
     const parts=[];
     const max=activeMaxLength();
-    if(max!==null) parts.push(`Max. ${max}`);
-    if($("#require-upper").checked) parts.push("Nagybetű");
-    if($("#require-digit").checked) parts.push("Szám");
-    if($("#require-special").checked) parts.push("Speciális");
-    if($("#forbid-space").checked) parts.push("Nincs szóköz");
-    $("#summary-website").textContent=parts.length?parts.join(" · "):"Nincs";
+    if(max!==null) parts.push(t("summary.max",{max}));
+    if($("#require-upper").checked) parts.push(t("summary.upper"));
+    if($("#require-digit").checked) parts.push(t("summary.digit"));
+    if($("#require-special").checked) parts.push(t("summary.special"));
+    if($("#forbid-space").checked) parts.push(t("summary.noSpace"));
+    $("#summary-website").textContent=parts.length?parts.join(" · "):t("summary.none");
   }
 
-  // A státusz-oszlop: entrópia · hossz / minőség / weboldal-kompatibilitás.
+  // The status column: entropy · length / quality / website compatibility.
   function updateCandidateStatus(index,phrase) {
     const candidate=phraseCandidates[index], row=candidateRows[index];
     const bits=candidateBits(candidate);
     const quality=qualityForBits(bits);
     const check=checkWebsiteRequirements(phrase);
-    row.bits.textContent=`${Math.round(bits)} bit · ${characterLength(phrase)} karakter`;
+    row.bits.textContent=t("candidate.status",{bits:Math.round(bits),length:characterLength(phrase)});
     row.quality.textContent=quality.label;
     row.quality.className=`quality ${quality.c}`;
     row.compat.hidden=!websiteRequirementsActive();
-    row.compat.textContent=check.ok?"✓ Megfelel":"⚠ Nem felel meg";
+    row.compat.textContent=check.ok?t("compat.ok"):t("compat.bad");
     row.compat.className=`compat ${check.ok?"ok":"bad"}`;
   }
 
-  // ---- Entrópia-magyarázat (ⓘ) ----
+  // ---- Entropy explanation (ⓘ) ----
   const SUPERSCRIPT_DIGITS={"0":"⁰","1":"¹","2":"²","3":"³","4":"⁴","5":"⁵","6":"⁶","7":"⁷","8":"⁸","9":"⁹"};
   let entropyInfoIndex=null;
 
@@ -367,7 +370,7 @@
     return [...String(value)].map(ch=>SUPERSCRIPT_DIGITS[ch] ?? ch).join("");
   }
 
-  // 2^bits pontos értéke BigInt-tel; túl hosszú értéknél null (akkor csak 2^N látszik).
+  // The exact value of 2^bits using BigInt; null when it is too long (then only 2^N is shown).
   function decimalPossibilities(bits,maxDigits=50) {
     if(!Number.isInteger(bits) || bits<0 || bits>512) return null;
     const text=(2n**BigInt(bits)).toString();
@@ -377,12 +380,12 @@
 
   function fillEntropyInfo(candidate) {
     const bits=Math.round(candidateBits(candidate));
-    $("#entropy-info-value").textContent=`${bits} bit ≈ 2${superscriptNumber(bits)} lehetséges kimenet.`;
+    $("#entropy-info-value").textContent=t("entropy.value",{bits,sup:superscriptNumber(bits)});
     const decimal=decimalPossibilities(bits);
     const countLine=$("#entropy-info-count");
     countLine.hidden=decimal===null;
-    countLine.textContent=decimal===null?"":`≈ ${decimal} lehetséges kimenet`;
-    // A hosszkorlát szűkíti az elfogadott kimenetek halmazát; a becslés ezt nem tartalmazza.
+    countLine.textContent=decimal===null?"":t("entropy.count",{count:decimal});
+    // The maximum length narrows the set of accepted outputs; the estimate does not account for that.
     $("#entropy-info-caveat").hidden=activeMaxLength()===null;
   }
 
@@ -414,7 +417,7 @@
     else openEntropyInfo(index);
   }
 
-  // A nyitott magyarázat frissítése (újragenerálás vagy beállításváltozás után).
+  // Refreshing the open explanation (after regeneration or a settings change).
   function refreshEntropyInfo() {
     if(entropyInfoIndex===null) return;
     const candidate=phraseCandidates[entropyInfoIndex];
@@ -422,14 +425,14 @@
     fillEntropyInfo(candidate);
   }
 
-  // Elválasztó-beállítás változott: új elválasztók sorsolása, majd újrarajzolás
-  // (a szavak, a garantált számok és a nagybetű-cél változatlanok maradnak).
+  // The separator setting changed: draw new separators, then re-render
+  // (the words, the guaranteed numbers and the capitalization target stay unchanged).
   function rerollSeparatorsAndRender() {
     phraseCandidates.forEach(rollCandidateSeparators);
     renderCandidates();
   }
 
-  // Nagybetűzés: a mód a vezérlőből jön, a véletlen cél a jelölt állapotában tárolódik.
+  // Capitalization: the mode comes from the control, the random target is stored in the candidate state.
   function capitalMode() {
     const checked=document.querySelector('input[name="capital-mode"]:checked');
     return checked ? checked.value : "none";
@@ -446,12 +449,12 @@
     return word;
   }
 
-  // Új véletlen cél minden látható jelöltnek (belépés egy véletlen módba).
+  // A new random target for every visible candidate (entering a random mode).
   function rerollCapitalTargets() {
     phraseCandidates.forEach(candidate=>{ candidate.capTarget=secureRandomInt(candidate.words.length); });
   }
 
-  // Egy jelölt új véletlen tartalma: szavak + számblokkok (érték és pozíció).
+  // The new random content of a single candidate: words + number blocks (value and position).
   function buildCandidateParts(settings,pool,capTarget) {
     const words=pool.slice(0,settings.count).map(word=>({word,digits:"",side:"after"}));
     const selectedWordIndexes=secureShuffle(Array.from({length:settings.count},(_,i)=>i)).slice(0,settings.blocks);
@@ -466,7 +469,7 @@
       baseBits+=log2Combination(settings.count,settings.blocks)+settings.blocks*(1+Math.log2(lengths)+avg*Math.log2(10));
     }
 
-    // A véletlen nagybetű-cél megőrzése, amíg érvényes (pl. ha csak a számblokkok változnak).
+    // Keeping the random capitalization target while it is valid (e.g. when only the number blocks change).
     const target=(Number.isInteger(capTarget) && capTarget>=0 && capTarget<settings.count)
       ? capTarget
       : secureRandomInt(settings.count);
@@ -476,8 +479,8 @@
 
   function candidateTarget() { return clampInteger($("#candidate-count").value,1,5); }
 
-  // A csúszka állítása: a meglévő jelölteket megtartja, csak a hiányzókat pótolja
-  // (vagy levágja), és kizárólag az új jelölteket rajzolja ki.
+  // Handling the slider: existing candidates are kept, only the missing ones are added (or the
+  // surplus is trimmed), and only the new candidates are rendered.
   function syncCandidateCount() {
     if(!hungarianWords.length) return;
     const settings=phraseSettings();
@@ -502,8 +505,8 @@
     hidePhraseMessage();
   }
 
-  // Új tartalom minden jelöltnek; a meglévő szókészlet megmarad (szószám/blokk változásnál),
-  // teljes újragenerálásnál viszont mindenki új szókészletet kap.
+  // New content for every candidate; the existing word pool is kept (when the word count or the
+  // number blocks change), while a full regeneration gives every candidate a new word pool.
   function rebuildCandidates() {
     if(!hungarianWords.length) return;
     const settings=phraseSettings();
@@ -518,7 +521,7 @@
     renderCandidates();
   }
 
-  // A sorok száma kövesse a jelöltekét: a meglévő sorokat nem építi újra.
+  // The number of rows follows the number of candidates: existing rows are not rebuilt.
   function ensureCandidateRows(count) {
     while(candidateRows.length<count) {
       const row=document.createElement("div"); row.className="phrase-row";
@@ -528,13 +531,13 @@
       const bits=document.createElement("span"); bits.className="bits";
       const info=document.createElement("button");
       info.type="button"; info.className="info-btn"; info.textContent="ⓘ";
-      info.setAttribute("aria-label","Entrópia magyarázata");
+      info.setAttribute("aria-label",t("entropy.infoAria"));
       info.setAttribute("aria-expanded","false");
       bitsLine.appendChild(bits); bitsLine.appendChild(info);
       const quality=document.createElement("span"); quality.className="quality";
       const compat=document.createElement("span"); compat.className="compat"; compat.hidden=true;
       strength.appendChild(bitsLine); strength.appendChild(quality); strength.appendChild(compat);
-      const button=document.createElement("button"); button.type="button"; button.className="copy"; button.textContent="Másolás";
+      const button=document.createElement("button"); button.type="button"; button.className="copy"; button.textContent=t("actions.copy");
       button.addEventListener("click",()=>copyText(text.textContent));
       const index=candidateRows.length;
       info.addEventListener("click",event=>{ if(event&&event.stopPropagation) event.stopPropagation(); toggleEntropyInfo(index); });
@@ -545,7 +548,7 @@
     while(candidateRows.length>count) candidateRows.pop().row.remove();
   }
 
-  // Egy jelölt kirajzolása: a TÁROLT szavak/számblokkok/elválasztók + aktuális nagybetűzés.
+  // Rendering one candidate: the STORED words/number blocks/separators + the current capitalization.
   function renderCandidate(index) {
     const candidate=phraseCandidates[index];
     if(!candidate || !candidateRows[index]) return;
@@ -555,13 +558,13 @@
     updateCandidateStatus(index,phrase);
   }
 
-  // Egy jelölt entrópiája: ugyanaz a képlet, jelöltenként kiértékelve.
-  // A "123" pontosan egy választásnak számít (log2 N); a hozzá tartozó számjegy
-  // (log2 10) szándékosan nincs beszámítva: így a becslés továbbra is konzervatív.
-  // FIGYELEM: a maximális hossz szerinti elvetés (rejection) szűkíti az elfogadott
-  // kimenetek halmazát, ezt a becslés NEM tartalmazza. A feltételes entrópiához az
-  // elfogadási valószínűség ismerete kellene, ezért a mutatott érték a feltétel
-  // nélküli becslés (felső korlát), nem a hossz-korlátozott eloszlás entrópiája.
+  // The entropy of one candidate: the same formula, evaluated per candidate.
+  // "123" counts as exactly one choice (log2 N); the digit it produces (log2 10) is
+  // deliberately not included, so the estimate stays conservative.
+  // WARNING: rejection against the maximum length narrows the set of accepted outputs,
+  // and this estimate does NOT include that. Conditional entropy would require knowing the
+  // acceptance probability, so the displayed value is the unconditional estimate (an upper
+  // bound), not the entropy of the length-constrained distribution.
   function candidateBits(candidate) {
     const options=separatorOptionCount();
     let bits=candidate.baseBits;
@@ -571,7 +574,7 @@
 
   function hidePhraseMessage() { $("#phrase-message").hidden=true; }
 
-  // Minden jelölt újrarajzolása (elválasztó- vagy nagybetű-változás).
+  // Re-rendering every candidate (separator or capitalization change).
   function renderCandidates() {
     updateSettingSummaries();
     if(!phraseCandidates.length) return;
@@ -584,28 +587,28 @@
 
   function generatePassphrase() {
     if(!hungarianWords.length) return;
-    phraseCandidates=[];   // minden jelölt új szókészletet kap
+    phraseCandidates=[];   // every candidate gets a new word pool
     rebuildCandidates();
   }
 
   function switchTab(name) { const p=name==="password"; $("#password-tab").setAttribute("aria-selected",p); $("#phrase-tab").setAttribute("aria-selected",!p); $("#password-panel").hidden=!p; $("#phrase-panel").hidden=p; }
   let toastTimer;
-  function showToast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("show"),1500);}
-  async function copyText(text){try{await navigator.clipboard.writeText(text);}catch{const ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();}showToast("Vágólapra másolva");}
+  function showToast(msg){const toast=$("#toast");toast.textContent=msg;toast.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove("show"),1500);}
+  async function copyText(text){try{await navigator.clipboard.writeText(text);}catch{const ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();}showToast(t("toast.copied"));}
   async function copyResult(id){await copyText(document.getElementById(id).textContent);}
 
   async function loadWordList(){
     try {
       const list=window.HU_WORDS;
-      if(!list || !list.length) throw new Error("A lang/hun.js nem töltődött be (window.HU_WORDS hiányzik).");
+      if(!list || !list.length) throw new Error("lang/hun.js did not load (window.HU_WORDS is missing).");
       hungarianWords=(Array.isArray(list)?list:String(list).split(/\r?\n/)).map(s=>String(s).trim()).filter(Boolean);
-      if(hungarianWords.length!==16384) console.warn(`A szólista ${hungarianWords.length} sort tartalmaz, nem 16384-et.`);
-      $("#word-list-size").textContent=hungarianWords.length.toLocaleString("hu-HU");
+      if(hungarianWords.length!==16384) console.warn("Word list has "+hungarianWords.length+" entries, expected 16384.");
+      $("#word-list-size").textContent=hungarianWords.length.toLocaleString(document.documentElement.lang || "hu-HU");
       $("#generate-phrase").disabled=false;
       generatePassphrase();
     } catch(err) {
       console.error(err);
-      $("#phrase-message").textContent="A magyar szólista nem tölthető be. Ellenőrizd, hogy a lang mappa (hun.js) elérhető-e az index.html mellett.";
+      $("#phrase-message").textContent=t("error.wordListLoadFailed");
       $("#phrase-message").hidden=false;
     }
   }
@@ -675,7 +678,7 @@
     rebuildCandidates();
   });
   document.querySelectorAll(".sep-btn").forEach(button=>{
-    // A "123" gombnak nincs data-sep attribútuma: az a véletlen számjegy elválasztót kapcsolja.
+    // The "123" button has no data-sep attribute: it toggles the random digit separator.
     if(button.dataset.sep===undefined) button.addEventListener("click",toggleRandomDigitSeparator);
     else button.addEventListener("click",()=>toggleSeparatorChar(button.dataset.sep));
   });
@@ -684,10 +687,10 @@
   });
   document.querySelectorAll('input[name="max-length"]').forEach(radio=>{
     radio.addEventListener("change",()=>{
-      generationLengthFailure=null;   // a figyelmeztetés az utolsó generálásra vonatkozott
+      generationLengthFailure=null;   // the warning referred to the last generation
       syncMaxLengthRow();
       updateLengthWarning();
-      renderCandidates();             // csak újraszámol: nem generál és nem csonkít
+      renderCandidates();             // recalculates only: it does not generate and does not truncate
     });
   });
   $("#max-length-custom").addEventListener("input",()=>{
@@ -696,9 +699,9 @@
     renderCandidates();
   });
   ["#require-upper","#require-digit","#require-special","#forbid-space"].forEach(id=>{
-    $(id).addEventListener("change",renderCandidates);   // csak újraszámol, nem generál
+    $(id).addEventListener("change",renderCandidates);   // recalculates only, does not generate
   });
-  // Exkluzív harmonika: egyszerre csak EGY beállítás-szekció lehet nyitva (csak megjelenítés).
+  // Exclusive accordion: only ONE settings section can be open at a time (display only).
   const ACCORDION_SECTIONS=["#acc-numbers","#acc-capital","#acc-website"];
   ACCORDION_SECTIONS.forEach(selector=>{
     const section=$(selector);
@@ -710,7 +713,7 @@
       });
     });
   });
-  // Entrópia-magyarázat: a ⓘ gomb nyit/zár, külső kattintás és Escape zár.
+  // Entropy explanation: the ⓘ button opens/closes it; an outside click or Escape closes it.
   $("#entropy-info-close").addEventListener("click",()=>closeEntropyInfo(true));
   document.addEventListener("click",event=>{
     if(entropyInfoIndex===null) return;
@@ -727,7 +730,7 @@
   document.querySelectorAll('input[name="capital-mode"]').forEach(radio=>{
     radio.addEventListener("change",()=>{
       const mode=capitalMode();
-      // Csak akkor sorsol új célokat, ha nem-véletlen módból lépünk véletlen módba.
+      // New targets are drawn only when moving from a non-random mode into a random one.
       if(isRandomCapitalMode(mode) && !isRandomCapitalMode(activeCapitalMode)) rerollCapitalTargets();
       activeCapitalMode=mode;
       renderCandidates();
@@ -738,6 +741,26 @@
     rebuildCandidates();
   }));
   document.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",()=>copyResult(b.dataset.copy)));
+
+  // Language switch: ONLY the visible texts are refreshed. No new password or passphrase is
+  // generated, no new separator, number block or capitalization target is drawn, and the values
+  // already displayed stay unchanged character for character.
+  function refreshPasswordStatus() {
+    if(lastPasswordBits===null) return;
+    showQuality(lastPasswordBits,$("#password-bits"),$("#password-quality"));
+  }
+  function refreshTextsOnLanguageChange() {
+    candidateRows.forEach(row=>{
+      row.button.textContent=t("actions.copy");
+      row.info.setAttribute("aria-label",t("entropy.infoAria"));
+    });
+    renderCandidates();          // display only: re-rendering the stored candidates
+    updateLengthWarning();
+    refreshPasswordStatus();
+    const message=$("#phrase-message");
+    if(!hungarianWords.length && message && !message.hidden) message.textContent=t("error.wordListLoadFailed");
+  }
+  if(window.PWGEN_L10N) window.PWGEN_L10N.onLanguageChange(refreshTextsOnLanguageChange);
 
   activeCapitalMode=capitalMode();
   syncNumberPresetRow();

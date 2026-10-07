@@ -1,4 +1,8 @@
 <!doctype html>
+<!-- The static HTML intentionally remains in Hungarian (title, meta description, SEO copy,
+     JSON-LD) so that search engines keep indexing the Hungarian content. The UI language is
+     chosen at runtime by i18n.js (saved choice -> browser language -> English), and in that case
+     document.title and document.documentElement.lang are updated to the user's language too. -->
 <html lang="hu-HU">
 <head>
   <meta charset="utf-8">
@@ -37,56 +41,66 @@
 <body>
   <main class="app">
     <header>
-      <h1>Jelmondat és Jelszó Generátor</h1>
-      <p class="lead">Minden véletlen választás helyben, a böngésző biztonságos véletlenszám-generátorával történik.</p>
-      <a class="source-link" href="https://github.com/vherczeg/pwgen" target="_blank" rel="noopener noreferrer" aria-label="Forráskód a GitHubon (új lapon nyílik meg)">
-        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-        <span>Forráskód</span>
-      </a>
+      <h1 data-i18n="app.title">Jelmondat és Jelszó Generátor</h1>
+      <p class="lead" data-i18n="app.subtitle">Minden véletlen választás helyben, a böngésző biztonságos véletlenszám-generátorával történik.</p>
+      <div class="header-tools">
+        <details class="lang" id="lang-switcher">
+          <summary data-i18n-aria-label="language.selectAria">
+            <span class="lang-globe" aria-hidden="true">🌐</span>
+            <span id="lang-current">HU</span>
+            <span class="lang-caret" aria-hidden="true">▾</span>
+          </summary>
+          <ul class="lang-menu" id="lang-menu" data-i18n-aria-label="language.menuAria"></ul>
+        </details>
+        <a class="source-link" href="https://github.com/vherczeg/pwgen" target="_blank" rel="noopener noreferrer" data-i18n-aria-label="app.sourceLinkAria">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span data-i18n="app.sourceLink">Forráskód</span>
+        </a>
+      </div>
     </header>
 
-    <div class="tabs" role="tablist" aria-label="Generátor típusa">
-      <button class="tab" id="phrase-tab" role="tab" aria-controls="phrase-panel" aria-selected="true">Jelmondat</button>
-      <button class="tab" id="password-tab" role="tab" aria-controls="password-panel" aria-selected="false">Jelszó</button>
+    <div class="tabs" role="tablist" data-i18n-aria-label="tabs.groupAria">
+      <button class="tab" id="phrase-tab" role="tab" aria-controls="phrase-panel" aria-selected="true" data-i18n="tabs.passphrase">Jelmondat</button>
+      <button class="tab" id="password-tab" role="tab" aria-controls="password-panel" aria-selected="false" data-i18n="tabs.password">Jelszó</button>
     </div>
 
     <section class="panel" id="password-panel" role="tabpanel" aria-labelledby="password-tab" hidden>
       <div class="result-wrap">
         <div class="result" id="password-result" aria-live="polite"></div>
-        <button class="copy" type="button" data-copy="password-result">Másolás</button>
-        <button class="generate-inline" id="generate-password" type="button">Új jelszó</button>
+        <button class="copy" type="button" data-copy="password-result" data-i18n="actions.copy">Másolás</button>
+        <button class="generate-inline" id="generate-password" type="button" data-i18n="actions.newPassword">Új jelszó</button>
       </div>
       <div class="controls">
         <div class="field">
-          <div class="field-head"><label for="password-length">Jelszó hossza</label><output id="password-length-value" for="password-length">16</output></div>
+          <div class="field-head"><label for="password-length" data-i18n="password.lengthLabel">Jelszó hossza</label><output id="password-length-value" for="password-length">16</output></div>
           <input id="password-length" type="range" min="8" max="64" value="16">
         </div>
 
         <div class="field">
-          <span class="legend">Beállítások</span>
+          <span class="legend" data-i18n="password.options">Beállítások</span>
           <div class="checks">
-            <label class="check"><input id="use-numbers" type="checkbox" checked> Számjegyek (0–9)</label>
-            <label class="check"><input id="use-symbols" type="checkbox" checked> Speciális jelek</label>
-            <label class="check"><input id="avoid-ambiguous" type="checkbox" checked> Hasonló karakterek kerülése</label>
+            <label class="check"><input id="use-numbers" type="checkbox" checked> <span data-i18n="password.numbers">Számjegyek (0–9)</span></label>
+            <label class="check"><input id="use-symbols" type="checkbox" checked> <span data-i18n="password.symbols">Speciális jelek</span></label>
+            <label class="check"><input id="avoid-ambiguous" type="checkbox" checked> <span data-i18n="password.avoidAmbiguous">Hasonló karakterek kerülése</span></label>
           </div>
-          <p class="help">A kis- és nagybetűk mindig szerepelnek a jelszóban. A hasonló karakterek kerülése kizárja az I, l, 1, O és 0 karaktereket.</p>
+          <p class="help" data-i18n="password.optionsHelp">A kis- és nagybetűk mindig szerepelnek a jelszóban. A hasonló karakterek kerülése kizárja az I, l, 1, O és 0 karaktereket.</p>
         </div>
 
         <details>
-          <summary>Speciális beállítások</summary>
+          <summary data-i18n="password.advanced">Speciális beállítások</summary>
           <div class="advanced-body">
             <div class="number-settings two">
-              <label class="number-field">Minimum számjegy
+              <label class="number-field"><span data-i18n="password.minNumbers">Minimum számjegy</span>
                 <input id="min-numbers" type="number" min="1" max="20" value="1" inputmode="numeric">
               </label>
-              <label class="number-field">Minimum speciális jel
+              <label class="number-field"><span data-i18n="password.minSymbols">Minimum speciális jel</span>
                 <input id="min-symbols" type="number" min="1" max="20" value="1" inputmode="numeric">
               </label>
             </div>
-            <label class="number-field">Használható speciális karakterek
+            <label class="number-field"><span data-i18n="password.symbolSet">Használható speciális karakterek</span>
               <input id="symbol-set" class="text-input" type="text" value="!@#$%^&amp;*()-_=+[]{};:,.?" spellcheck="false" autocomplete="off">
             </label>
-            <p class="help">Ha egy webhely nem fogad el bizonyos jeleket, egyszerűen töröld őket innen. A minimum értékek csak akkor érvényesek, ha az adott karaktertípus be van kapcsolva.</p>
+            <p class="help" data-i18n="password.symbolSetHelp">Ha egy webhely nem fogad el bizonyos jeleket, egyszerűen töröld őket innen. A minimum értékek csak akkor érvényesek, ha az adott karaktertípus be van kapcsolva.</p>
           </div>
         </details>
 
@@ -95,117 +109,117 @@
     </section>
 
     <section class="panel" id="phrase-panel" role="tabpanel" aria-labelledby="phrase-tab">
-      <div class="result" id="phrase-message">Szólista betöltése…</div>
+      <div class="result" id="phrase-message" data-i18n="passphrase.messageLoading">Szólista betöltése…</div>
       <div class="phrase-list" id="phrase-list" aria-live="polite"></div>
       <div class="info-panel" id="entropy-info" hidden role="dialog" aria-labelledby="entropy-info-title">
-        <p class="info-title" id="entropy-info-title">Mit jelent az entrópia?</p>
-        <p>Az entrópia azt becsüli, hány bitnyi véletlenszerűség van a generálási folyamatban. Minél nagyobb az érték, annál több lehetséges jelmondat közül kellene egy támadónak keresnie.</p>
+        <p class="info-title" id="entropy-info-title" data-i18n="entropy.title">Mit jelent az entrópia?</p>
+        <p data-i18n="entropy.intro">Az entrópia azt becsüli, hány bitnyi véletlenszerűség van a generálási folyamatban. Minél nagyobb az érték, annál több lehetséges jelmondat közül kellene egy támadónak keresnie.</p>
         <p id="entropy-info-value"></p>
         <p class="help" id="entropy-info-count"></p>
-        <p>Az entrópia nem ugyanaz, mint a karakterszám. Egy hosszabb jelmondat nem automatikusan erősebb; az számít, hogy mekkora és mennyire véletlen generálási térből választottuk.</p>
-        <p>Általában egy újabb véletlen szó hozzáadása sokkal nagyobb biztonsági növekedést ad, mint egy kiszámítható formázási szabály.</p>
-        <p>A feltörési idő erősen függ attól, hogyan tárolja és védi a jelszót az adott szolgáltatás, ezért itt nem adunk félrevezető időbecslést.</p>
-        <p class="help" id="entropy-info-caveat" hidden>A maximális hossz korlátozása csökkentheti a tényleges keresési teret; a kijelzett becslés ezt jelenleg nem feltétlenül veszi figyelembe.</p>
-        <p class="help">A Nagyon gyenge – Nagyon erős besorolás tájékoztató jellegű, a becsült generálási entrópia könnyebb értelmezésére szolgál; nem hivatalos szabványos besorolás.</p>
-        <button class="copy" id="entropy-info-close" type="button">Bezárás</button>
+        <p data-i18n="entropy.notLength">Az entrópia nem ugyanaz, mint a karakterszám. Egy hosszabb jelmondat nem automatikusan erősebb; az számít, hogy mekkora és mennyire véletlen generálási térből választottuk.</p>
+        <p data-i18n="entropy.moreWords">Általában egy újabb véletlen szó hozzáadása sokkal nagyobb biztonsági növekedést ad, mint egy kiszámítható formázási szabály.</p>
+        <p data-i18n="entropy.noCrackTime">A feltörési idő erősen függ attól, hogyan tárolja és védi a jelszót az adott szolgáltatás, ezért itt nem adunk félrevezető időbecslést.</p>
+        <p class="help" id="entropy-info-caveat" hidden data-i18n="entropy.caveat">A maximális hossz korlátozása csökkentheti a tényleges keresési teret; a kijelzett becslés ezt jelenleg nem feltétlenül veszi figyelembe.</p>
+        <p class="help" data-i18n="entropy.disclaimer">A Nagyon gyenge – Nagyon erős besorolás tájékoztató jellegű, a becsült generálási entrópia könnyebb értelmezésére szolgál; nem hivatalos szabványos besorolás.</p>
+        <button class="copy" id="entropy-info-close" type="button" data-i18n="actions.close">Bezárás</button>
       </div>
       <div class="phrase-actions">
-        <button class="generate-inline" id="generate-phrase" type="button" disabled>Új jelmondat</button>
+        <button class="generate-inline" id="generate-phrase" type="button" disabled data-i18n="actions.newPassphrase">Új jelmondat</button>
       </div>
       <div class="controls">
         <div class="field">
-          <div class="field-head"><label for="candidate-count">Jelmondatok száma</label><output id="candidate-count-value" for="candidate-count">3</output></div>
+          <div class="field-head"><label for="candidate-count" data-i18n="passphrase.candidateCount">Jelmondatok száma</label><output id="candidate-count-value" for="candidate-count">3</output></div>
           <input id="candidate-count" type="range" min="1" max="5" step="1" value="3">
         </div>
         <div class="field">
-          <div class="field-head"><label for="word-count">Szavak száma</label><output id="word-count-value" for="word-count">3</output></div>
+          <div class="field-head"><label for="word-count" data-i18n="passphrase.wordCount">Szavak száma</label><output id="word-count-value" for="word-count">3</output></div>
           <input id="word-count" type="range" min="2" max="10" value="3">
         </div>
         <div class="field">
-          <div class="sep-buttons" role="group" aria-label="Gyakori elválasztó karakterek">
+          <div class="sep-buttons" role="group" data-i18n-aria-label="separator.groupAria">
             <button type="button" class="sep-btn" data-sep="-" aria-pressed="false">-</button>
             <button type="button" class="sep-btn" data-sep="_" aria-pressed="false">_</button>
             <button type="button" class="sep-btn" data-sep="+" aria-pressed="false">+</button>
             <button type="button" class="sep-btn" data-sep="." aria-pressed="false">.</button>
             <button type="button" class="sep-btn" data-sep="(" aria-pressed="false">(</button>
             <button type="button" class="sep-btn" data-sep=")" aria-pressed="false">)</button>
-            <button type="button" class="sep-btn" data-sep=" " aria-pressed="false">Szóköz</button>
+            <button type="button" class="sep-btn" data-sep=" " aria-pressed="false" data-i18n="separator.space">Szóköz</button>
             <button type="button" class="sep-btn" data-sep="=" aria-pressed="false">=</button>
             <button type="button" class="sep-btn" data-sep="/" aria-pressed="false">/</button>
             <button type="button" class="sep-btn" data-sep="%" aria-pressed="false">%</button>
             <button type="button" class="sep-btn" data-sep="!" aria-pressed="false">!</button>
             <button type="button" class="sep-btn" data-sep="?" aria-pressed="false">?</button>
-            <button type="button" class="sep-btn" id="sep-random-digit" aria-pressed="false" aria-label="Véletlenszerű számjegy elválasztóként">123</button>
+            <button type="button" class="sep-btn" id="sep-random-digit" aria-pressed="false" data-i18n-aria-label="separator.randomDigitAria">123</button>
           </div>
           <label class="sep-field" for="separator-chars">
-            Elválasztó karakterek:
+            <span data-i18n="passphrase.separatorCharacters">Elválasztó karakterek:</span>
             <input id="separator-chars" class="text-input" type="text" value=" " spellcheck="false" autocomplete="off" aria-describedby="separator-help">
           </label>
-          <p class="help" id="separator-help">A mező karakterei közül minden szóhatáron külön, véletlenszerűen választ. Üres mező esetén nincs elválasztó. A „123” a véletlen számjegy elválasztó; önálló számjegy nem használható.</p>
+          <p class="help" id="separator-help" data-i18n="separator.help">A mező karakterei közül minden szóhatáron külön, véletlenszerűen választ. Üres mező esetén nincs elválasztó. A „123” a véletlen számjegy elválasztó; önálló számjegy nem használható.</p>
         </div>
 
         <details class="acc" id="acc-numbers">
-          <summary><span class="acc-title">Garantált számok</span><span class="acc-value" id="summary-numbers">1 szám</span></summary>
+          <summary><span class="acc-title" data-i18n="settings.guaranteedNumbers">Garantált számok</span><span class="acc-value" id="summary-numbers">1 szám</span></summary>
           <div class="advanced-body">
             <div class="field">
               <div class="choices">
-                <label class="check"><input type="radio" name="number-preset" value="none"> Nincs</label>
-                <label class="check"><input type="radio" name="number-preset" value="one" checked> 1 szám</label>
-                <label class="check"><input type="radio" name="number-preset" value="two"> 2 szám</label>
-                <label class="check"><input type="radio" name="number-preset" value="custom"> Egyéni…</label>
+                <label class="check"><input type="radio" name="number-preset" value="none"> <span data-i18n="numbers.none">Nincs</span></label>
+                <label class="check"><input type="radio" name="number-preset" value="one" checked> <span data-i18n="numbers.one">1 szám</span></label>
+                <label class="check"><input type="radio" name="number-preset" value="two"> <span data-i18n="numbers.two">2 szám</span></label>
+                <label class="check"><input type="radio" name="number-preset" value="custom"> <span data-i18n="numbers.custom">Egyéni…</span></label>
               </div>
-              <p class="help">A kiválasztott számok biztosan bekerülnek a jelmondatba. Az elválasztóknál bekapcsolható 123 ettől függetlenül, véletlenszerűen használhat számjegyet elválasztóként.</p>
+              <p class="help" data-i18n="numbers.help">A kiválasztott számok biztosan bekerülnek a jelmondatba. Az elválasztóknál bekapcsolható 123 ettől függetlenül, véletlenszerűen használhat számjegyet elválasztóként.</p>
               <div id="custom-number-settings" hidden>
                 <div class="number-settings">
-                  <label class="number-field">Számblokkok száma<input id="number-block-count" type="number" min="0" max="10" value="1" inputmode="numeric"></label>
-                  <label class="number-field">Min. számjegy / blokk<input id="number-min-digits" type="number" min="1" max="12" value="1" inputmode="numeric"></label>
-                  <label class="number-field">Max. számjegy / blokk<input id="number-max-digits" type="number" min="1" max="12" value="1" inputmode="numeric"></label>
+                  <label class="number-field"><span data-i18n="numbers.blocks">Számblokkok száma</span><input id="number-block-count" type="number" min="0" max="10" value="1" inputmode="numeric"></label>
+                  <label class="number-field"><span data-i18n="numbers.minDigits">Min. számjegy / blokk</span><input id="number-min-digits" type="number" min="1" max="12" value="1" inputmode="numeric"></label>
+                  <label class="number-field"><span data-i18n="numbers.maxDigits">Max. számjegy / blokk</span><input id="number-max-digits" type="number" min="1" max="12" value="1" inputmode="numeric"></label>
                 </div>
-                <p class="help">Legfeljebb egy blokk kerül egy szóhoz, a szó elejére vagy végére.</p>
+                <p class="help" data-i18n="numbers.blocksHelp">Legfeljebb egy blokk kerül egy szóhoz, a szó elejére vagy végére.</p>
               </div>
             </div>
           </div>
         </details>
 
         <details class="acc" id="acc-capital">
-          <summary><span class="acc-title">Nagybetűzés</span><span class="acc-value" id="summary-capital">Egy véletlen szó</span></summary>
+          <summary><span class="acc-title" data-i18n="settings.capitalization">Nagybetűzés</span><span class="acc-value" id="summary-capital">Egy véletlen szó</span></summary>
           <div class="advanced-body">
             <div class="field">
               <div class="choices">
-                <label class="check"><input type="radio" name="capital-mode" value="none"> Nincs</label>
-                <label class="check"><input type="radio" name="capital-mode" value="all"> Minden szó</label>
-                <label class="check"><input type="radio" name="capital-mode" value="one" checked> Egy véletlen szó</label>
-                <label class="check"><input type="radio" name="capital-mode" value="oneUpper"> Egy véletlen szó CSUPA NAGYBETŰ</label>
+                <label class="check"><input type="radio" name="capital-mode" value="none"> <span data-i18n="capital.none">Nincs</span></label>
+                <label class="check"><input type="radio" name="capital-mode" value="all"> <span data-i18n="capital.all">Minden szó</span></label>
+                <label class="check"><input type="radio" name="capital-mode" value="one" checked> <span data-i18n="capital.one">Egy véletlen szó</span></label>
+                <label class="check"><input type="radio" name="capital-mode" value="oneUpper"> <span data-i18n="capital.oneUpper">Egy véletlen szó CSUPA NAGYBETŰ</span></label>
               </div>
             </div>
           </div>
         </details>
 
         <details class="acc" id="acc-website">
-          <summary><span class="acc-title">Weboldal követelményei</span><span class="acc-value" id="summary-website">Nincs</span></summary>
+          <summary><span class="acc-title" data-i18n="settings.websiteRequirements">Weboldal követelményei</span><span class="acc-value" id="summary-website">Nincs</span></summary>
           <div class="advanced-body">
             <div class="field">
-              <label class="legend">Maximális hossz</label>
+              <span class="legend" data-i18n="website.maxLength">Maximális hossz</span>
               <div class="choices row">
-                <label class="check"><input type="radio" name="max-length" value="none" checked> Nincs</label>
+                <label class="check"><input type="radio" name="max-length" value="none" checked> <span data-i18n="website.none">Nincs</span></label>
                 <label class="check"><input type="radio" name="max-length" value="20"> 20</label>
                 <label class="check"><input type="radio" name="max-length" value="32"> 32</label>
                 <label class="check"><input type="radio" name="max-length" value="64"> 64</label>
-                <label class="check"><input type="radio" name="max-length" value="custom"> Egyéni…</label>
+                <label class="check"><input type="radio" name="max-length" value="custom"> <span data-i18n="website.custom">Egyéni…</span></label>
               </div>
               <div id="max-length-custom-row" hidden>
-                <label class="number-field">Egyéni maximum<input id="max-length-custom" type="number" min="8" max="128" value="32" inputmode="numeric"></label>
+                <label class="number-field"><span data-i18n="website.customMax">Egyéni maximum</span><input id="max-length-custom" type="number" min="8" max="128" value="32" inputmode="numeric"></label>
               </div>
-              <p class="help">Ha egy új jelmondat hosszabb a maximumnál, a generátor a teljes jelmondatot elveti és újat sorsol. Meglévő jelmondatot soha nem vág le.</p>
-              <label class="legend">Az oldal megköveteli:</label>
+              <p class="help" data-i18n="website.maxHelp">Ha egy új jelmondat hosszabb a maximumnál, a generátor a teljes jelmondatot elveti és újat sorsol. Meglévő jelmondatot soha nem vág le.</p>
+              <span class="legend" data-i18n="website.requires">Az oldal megköveteli:</span>
               <div class="checks">
-                <label class="check"><input type="checkbox" id="require-upper"> Nagybetű</label>
-                <label class="check"><input type="checkbox" id="require-digit"> Szám</label>
-                <label class="check"><input type="checkbox" id="require-special"> Speciális karakter</label>
+                <label class="check"><input type="checkbox" id="require-upper"> <span data-i18n="website.requiresUpper">Nagybetű</span></label>
+                <label class="check"><input type="checkbox" id="require-digit"> <span data-i18n="website.requiresDigit">Szám</span></label>
+                <label class="check"><input type="checkbox" id="require-special"> <span data-i18n="website.requiresSpecial">Speciális karakter</span></label>
               </div>
-              <label class="legend">Az oldal tiltja:</label>
+              <span class="legend" data-i18n="website.forbids">Az oldal tiltja:</span>
               <div class="checks">
-                <label class="check"><input type="checkbox" id="forbid-space"> Szóköz</label>
+                <label class="check"><input type="checkbox" id="forbid-space"> <span data-i18n="website.forbidsSpace">Szóköz</span></label>
               </div>
               <p class="help" id="website-feedback" hidden></p>
               <p class="help" id="length-warning" hidden></p>
@@ -214,50 +228,61 @@
         </details>
 
         <details>
-          <summary>ⓘ Hogyan működik?</summary>
+          <summary data-i18n="how.title">ⓘ Hogyan működik?</summary>
           <div class="advanced-body">
-            <p class="help"><strong>Magyar szólista:</strong> a generátor <span id="word-list-size">…</span> gyakoriság alapján kiválasztott, egyedi szót használ. A választás minden alkalommal helyben, kriptográfiailag biztonságos véletlennel történik.</p>
+            <p class="help"><strong data-i18n="how.lead">Magyar szólista:</strong> <span data-i18n="how.bodyPrefix">a generátor</span> <span id="word-list-size">…</span> <span data-i18n="how.bodySuffix">gyakoriság alapján kiválasztott, egyedi szót használ. A választás minden alkalommal helyben, kriptográfiailag biztonságos véletlennel történik.</span></p>
           </div>
         </details>
       </div>
     </section>
 
-    <section class="privacy" aria-labelledby="privacy-title">
-      <h2 id="privacy-title">🔒 Biztonság és adatvédelem – 100% helyi generálás</h2>
-      <p><strong>A jelszavak és a jelmondatok a te böngésződben készülnek.</strong> A generálás teljes egészében a készülékeden történik, a böngésző beépített, kriptográfiailag biztonságos véletlenszám-generátorával. A létrehozott jelszó vagy jelmondat nem kerül elküldésre és nem kerül tárolásra: sem szerverre, sem sütibe, sem localStorage-ba, sem naplóba.</p>
-      <p><strong>Nincs analitika és nincs harmadik fél.</strong> Az oldal nem használ Google Analyticset vagy más követőkódot, nem tölt be harmadik féltől származó scriptet, stíluslapot, fontot vagy képet, és nem készít ujjlenyomatot a látogatókról. Követő cookie hiányában cookie-hozzájárulási sávra sincs szükség.</p>
-      <p><strong>A böngésződ szigorú hálózati szabályt kényszerít ki (Content Security Policy).</strong> Az oldal JavaScriptje csak a saját eredetére nyithat kapcsolatot, harmadik féltől származó szerverhez nem:</p>
-      <pre><code>connect-src 'self'</code></pre>
-      <p>A CSP egy plusz, böngésző által kikényszerített védelmi réteg, amely jelentősen szűkíti az adatszivárgás lehetséges útvonalait. A <code>connect-src 'self'</code> megakadályozza, hogy az oldal JavaScriptje közvetlen hálózati kapcsolatot nyisson harmadik fél eredetéhez.</p>
-      <p>A forráskód nyilvánosan ellenőrizhető a <a href="https://github.com/vherczeg/pwgen" target="_blank" rel="noopener noreferrer">GitHubon</a>: ez átláthatóságot ad, de önmagában nem garantál biztonságot.</p>
-      <details>
-        <summary>Technikai részletek</summary>
-        <div class="advanced-body">
-          <ul class="privacy-list">
-            <li>Véletlenszám: <code>window.crypto.getRandomValues()</code> elutasításos mintavétellel (rejection sampling), így nincs modulo-eltolás; <code>Math.random()</code> sehol nem szerepel.</li>
-            <li>A generált értékek nem kerülnek URL-be, naplóba, sütibe, localStorage-ba és hálózati kérésbe.</li>
-            <li>Vágólapra másolás kizárólag a böngésző <code>navigator.clipboard</code> API-jával, helyben történik.</li>
-            <li>Betöltött erőforrások: <code>index.html</code>, <code>app.css</code>, <code>app.js</code>, <code>lang/hun.js</code> – mindegyik ugyanarról az eredetről.</li>
-            <li>CSP: <code>default-src 'none'</code>; <code>script-src 'self'</code>; <code>style-src 'self'</code>; <code>connect-src 'self'</code>; <code>img-src 'self' data:</code>; <code>font-src 'self'</code>; <code>object-src 'none'</code>; <code>base-uri 'none'</code>; <code>form-action 'none'</code>. Nincs benne <code>'unsafe-inline'</code> és <code>'unsafe-eval'</code>.</li>
-            <li>A <code>connect-src 'self'</code> a harmadik fél eredetére irányuló JavaScript-kapcsolatokat tiltja, az ugyanarra az eredetre irányuló kapcsolatokat viszont engedélyezi.</li>
-            <li>Az alkalmazás a saját, azonos eredetű statikus erőforrásainak betöltése után jelenleg egyetlen hálózati kérést sem indít.</li>
-            <li>A CSP védelem-mélység (defense-in-depth), nem matematikai garancia minden lehetséges adatszivárgási mechanizmus, illetve a feltört böngésző vagy bővítmény ellen.</li>
-            <li>A CSP jelenleg <code>&lt;meta&gt;</code> tagként érkezik, mert a GitHub Pages nem teszi lehetővé saját HTTP-válaszfejlécek beállítását. Ezért a CSP nem tartalmaz <code>frame-ancestors</code> direktívát: a kattintáslopás (clickjacking) elleni védelem HTTP-fejléccel állítható be, meta tagből viszont nem érvényesülne.</li>
-            <li>A <code>file:</code> séma azért szerepel a script/style direktívákban, hogy az oldal helyi fájlból (<code>file://</code>) megnyitva is működjön.</li>
-          </ul>
-        </div>
-      </details>
-    </section>
-    <section class="seo-copy" aria-label="A generátorról">
-      <h2>Magyar password és passphrase generator</h2>
-      <p>Az oldal erős random jelszavak és magyar jelmondatok (passphrase-ek) készítésére használható. A generálás helyben történik; a létrehozott jelszó nem kerül elküldésre szerverre.</p>
+    <details class="privacy" id="privacy-section" aria-labelledby="privacy-title">
+      <summary><h2 id="privacy-title" data-i18n="security.title">🔒 Biztonság és adatvédelem – 100% helyi generálás</h2></summary>
+      <div class="advanced-body">
+        <p data-i18n-html="security.localGeneration"><strong>A jelszavak és a jelmondatok a te böngésződben készülnek.</strong> A generálás teljes egészében a készülékeden történik, a böngésző beépített, kriptográfiailag biztonságos véletlenszám-generátorával. A létrehozott jelszó vagy jelmondat nem kerül elküldésre és nem kerül tárolásra: sem szerverre, sem sütibe, sem localStorage-ba, sem naplóba.</p>
+        <p data-i18n-html="security.noAnalytics"><strong>Nincs analitika és nincs harmadik fél.</strong> Az oldal nem használ Google Analyticset vagy más követőkódot, nem tölt be harmadik féltől származó scriptet, stíluslapot, fontot vagy képet, és nem készít ujjlenyomatot a látogatókról. Követő cookie hiányában cookie-hozzájárulási sávra sincs szükség.</p>
+        <p data-i18n-html="security.cspTitle"><strong>A böngésződ szigorú hálózati szabályt kényszerít ki (Content Security Policy).</strong> Az oldal JavaScriptje csak a saját eredetére nyithat kapcsolatot, harmadik féltől származó szerverhez nem:</p>
+        <pre><code>connect-src 'self'</code></pre>
+        <p data-i18n-html="security.cspBody">A CSP egy plusz, böngésző által kikényszerített védelmi réteg, amely jelentősen szűkíti az adatszivárgás lehetséges útvonalait. A <code>connect-src 'self'</code> megakadályozza, hogy az oldal JavaScriptje közvetlen hálózati kapcsolatot nyisson harmadik fél eredetéhez.</p>
+        <p><span data-i18n="security.sourcePrefix">A forráskód nyilvánosan ellenőrizhető a </span><a href="https://github.com/vherczeg/pwgen" target="_blank" rel="noopener noreferrer" data-i18n="security.sourceLink">GitHubon</a><span data-i18n="security.sourceSuffix">: ez átláthatóságot ad, de önmagában nem garantál biztonságot.</span></p>
+        <details>
+          <summary data-i18n="security.technicalDetails">Technikai részletek</summary>
+          <div class="advanced-body">
+            <ul class="privacy-list">
+              <li data-i18n-html="security.liRng">Véletlenszám: <code>window.crypto.getRandomValues()</code> elutasításos mintavétellel (rejection sampling), így nincs modulo-eltolás; <code>Math.random()</code> sehol nem szerepel.</li>
+              <li data-i18n-html="security.liNoStore">A generált értékek nem kerülnek URL-be, naplóba, sütibe, localStorage-ba és hálózati kérésbe.</li>
+              <li data-i18n-html="security.liPrivacy">Az egyetlen tárolt beállítás a választott felületi nyelv (<code>pwgen_language</code> a localStorage-ban). Ez nem követés: nincs benne azonosító, és a generált értékekhez semmi köze.</li>
+              <li data-i18n-html="security.liClipboard">Vágólapra másolás kizárólag a böngésző <code>navigator.clipboard</code> API-jával, helyben történik.</li>
+              <li data-i18n-html="security.liResources">Betöltött erőforrások: <code>index.html</code>, <code>app.css</code>, <code>app.js</code>, <code>i18n.js</code>, <code>lang/hun.js</code>, <code>lang/ui/hu.js</code>, <code>lang/ui/en.js</code> – mindegyik ugyanarról az eredetről.</li>
+              <li data-i18n-html="security.liCspList">CSP: <code>default-src 'none'</code>; <code>script-src 'self'</code>; <code>style-src 'self'</code>; <code>connect-src 'self'</code>; <code>img-src 'self' data:</code>; <code>font-src 'self'</code>; <code>object-src 'none'</code>; <code>base-uri 'none'</code>; <code>form-action 'none'</code>. Nincs benne <code>'unsafe-inline'</code> és <code>'unsafe-eval'</code>.</li>
+              <li data-i18n-html="security.liConnectSrc">A <code>connect-src 'self'</code> a harmadik fél eredetére irányuló JavaScript-kapcsolatokat tiltja, az ugyanarra az eredetre irányuló kapcsolatokat viszont engedélyezi.</li>
+              <li data-i18n-html="security.liNoRequests">Az alkalmazás a saját, azonos eredetű statikus erőforrásainak betöltése után jelenleg egyetlen hálózati kérést sem indít.</li>
+              <li data-i18n-html="security.liDefenseInDepth">A CSP védelem-mélység (defense-in-depth), nem matematikai garancia minden lehetséges adatszivárgási mechanizmus, illetve a feltört böngésző vagy bővítmény ellen.</li>
+              <li data-i18n-html="security.liMetaDelivery">A CSP jelenleg <code>&lt;meta&gt;</code> tagként érkezik, mert a GitHub Pages nem teszi lehetővé saját HTTP-válaszfejlécek beállítását. Ezért a CSP nem tartalmaz <code>frame-ancestors</code> direktívát: a kattintáslopás (clickjacking) elleni védelem HTTP-fejléccel állítható be, meta tagből viszont nem érvényesülne.</li>
+              <li data-i18n-html="security.liFileScheme">A <code>file:</code> séma azért szerepel a script/style direktívákban, hogy az oldal helyi fájlból (<code>file://</code>) megnyitva is működjön.</li>
+            </ul>
+          </div>
+        </details>
+      </div>
+    </details>
+    <!-- SEO copy: the static HTML source stays in Hungarian (that is what search engines index),
+         while the i18n layer running in the browser translates the displayed text into the
+         selected UI language. Multilingual SEO would need separate language URLs and hreflang. -->
+    <section class="seo-copy" aria-label="A generátorról" data-i18n-aria-label="seo.aria">
+      <h2 data-i18n="seo.title">Magyar password és passphrase generator</h2>
+      <p data-i18n="seo.description">Az oldal erős random jelszavak és magyar jelmondatok (passphrase-ek) készítésére használható. A generálás helyben történik; a létrehozott jelszó nem kerül elküldésre szerverre.</p>
     </section>
   </main>
-  <div class="toast" id="toast" role="status" aria-live="polite">Vágólapra másolva</div>
+  <div class="toast" id="toast" role="status" aria-live="polite" data-i18n="toast.copied">Vágólapra másolva</div>
 
-  <!-- A szólista klasszikus script tagként töltődik be, hogy file:// alól is működjön (ott a fetch/XHR tiltott).
-       Nyelvenként egy fájl a lang mappában; a fájlnév az ISO 639-3 nyelvkód (hun = magyar). -->
+  <!-- Every script is a classic script tag from the same origin: it also works from file://
+       and needs no 'unsafe-inline' in the CSP.
+       The passphrase word list (lang/hun.js) and the UI languages (lang/ui/*.js) are separate
+       concepts: a new UI language needs only one new lang/ui/<language-code>.js and one script tag. -->
   <script src="lang/hun.js"></script>
+  <script src="lang/ui/hu.js"></script>
+  <script src="lang/ui/en.js"></script>
+  <script src="i18n.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
