@@ -1,8 +1,8 @@
 <!doctype html>
-<!-- A statikus HTML szándékosan magyar nyelvű marad (cím, meta leírás, SEO szöveg, JSON-LD),
-     hogy a keresők továbbra is a magyar tartalmat indexeljék. A felület nyelvét az i18n.js
-     állítja be futásidőben (mentett választás -> böngészőnyelv -> angol), és ilyenkor a
-     document.title és a document.documentElement.lang is frissül a felhasználó nyelvére. -->
+<!-- The static HTML intentionally remains in Hungarian (title, meta description, SEO copy,
+     JSON-LD) so that search engines keep indexing the Hungarian content. The UI language is
+     chosen at runtime by i18n.js (saved choice -> browser language -> English), and in that case
+     document.title and document.documentElement.lang are updated to the user's language too. -->
 <html lang="hu-HU">
 <head>
   <meta charset="utf-8">
@@ -265,9 +265,9 @@
         </details>
       </div>
     </details>
-    <!-- SEO-szöveg: a statikus HTML forrás magyar marad (ezt indexelik a keresők), a böngészőben
-         futó i18n réteg viszont a kiválasztott felületi nyelvre fordítja a megjelenített szöveget.
-         Többnyelvű SEO-hoz külön nyelvi URL-ek (pl. /en/) és hreflang lennének szükségesek. -->
+    <!-- SEO copy: the static HTML source stays in Hungarian (that is what search engines index),
+         while the i18n layer running in the browser translates the displayed text into the
+         selected UI language. Multilingual SEO would need separate language URLs and hreflang. -->
     <section class="seo-copy" aria-label="A generátorról" data-i18n-aria-label="seo.aria">
       <h2 data-i18n="seo.title">Magyar password és passphrase generator</h2>
       <p data-i18n="seo.description">Az oldal erős random jelszavak és magyar jelmondatok (passphrase-ek) készítésére használható. A generálás helyben történik; a létrehozott jelszó nem kerül elküldésre szerverre.</p>
@@ -275,10 +275,10 @@
   </main>
   <div class="toast" id="toast" role="status" aria-live="polite" data-i18n="toast.copied">Vágólapra másolva</div>
 
-  <!-- Minden script klasszikus script tag, azonos eredetről: működik file:// alól is,
-       és nem igényel 'unsafe-inline'-t a CSP-ben.
-       A jelmondat-szólista (lang/hun.js) és a felületi nyelvek (lang/ui/*.js) külön fogalmak:
-       új felületi nyelvhez csak egy új lang/ui/<nyelvkód>.js és egy script tag kell. -->
+  <!-- Every script is a classic script tag from the same origin: it also works from file://
+       and needs no 'unsafe-inline' in the CSP.
+       The passphrase word list (lang/hun.js) and the UI languages (lang/ui/*.js) are separate
+       concepts: a new UI language needs only one new lang/ui/<language-code>.js and one script tag. -->
   <script src="lang/hun.js"></script>
   <script src="lang/ui/hu.js"></script>
   <script src="lang/ui/en.js"></script>

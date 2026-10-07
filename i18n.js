@@ -1,14 +1,14 @@
-// i18n.js – minimál, függőség nélküli felületi lokalizáció (nincs build lépés,
-// nincs külső szolgáltatás, nincs hálózati kérés).
+// i18n.js - minimal, dependency-free UI localization (no build step,
+// no external service, no network request).
 //
-// Architektúra:
-//   lang/ui/<nyelvkód>.js  – nyelvi szótárak (window.PWGEN_I18N.<kód>)
-//   i18n.js                – ez a motor: t(), deklaratív kötés, nyelvválasztó
-//   app.js                 – a generátor logikája, csak t("kulcs") hívásokkal
+// Architecture:
+//   lang/ui/<language-code>.js  - language dictionaries (window.PWGEN_I18N.<code>)
+//   i18n.js                     - this engine: t(), declarative binding, language switcher
+//   app.js                      - the generator logic, using only t("key") calls
 //
-// A felületi nyelv (hu, en, később de/fr/es…) és a jelmondat-szótár nyelve
-// (hun, később eng/deu…) két külön fogalom: ez a fájl kizárólag a felületi
-// szövegekkel foglalkozik, a szólistát nem érinti.
+// The UI language (hu, en, later de/fr/es...) and the passphrase dictionary language
+// (hun, later eng/deu...) are two separate concepts: this file deals only with the UI
+// texts and never touches the word list.
 (function () {
   "use strict";
 
@@ -23,7 +23,7 @@
     return Object.prototype.hasOwnProperty.call(registry, code);
   }
 
-  // "hu-HU" -> "hu"; ismeretlen nyelv -> null
+  // "hu-HU" -> "hu"; an unsupported language -> null
   function normalize(code) {
     if (!code) return null;
     const value = String(code).toLowerCase();
@@ -37,10 +37,10 @@
   }
 
   function saveLanguage(code) {
-    try { localStorage.setItem(STORAGE_KEY, code); } catch (err) { /* privát mód: nincs tárolás */ }
+    try { localStorage.setItem(STORAGE_KEY, code); } catch (err) { /* private mode: nothing is stored */ }
   }
 
-  // Böngészőnyelv: navigator.languages sorrendben, majd navigator.language.
+  // Browser language: navigator.languages in order, then navigator.language.
   function browserLanguage() {
     const list = (navigator.languages && navigator.languages.length) ? navigator.languages : [navigator.language];
     for (const item of list) {
@@ -50,16 +50,16 @@
     return null;
   }
 
-  // {helyorzo} cseréje. Nincs eval és nincs dinamikus kódvégrehajtás.
+  // Placeholder substitution. No eval and no dynamic code execution.
   function interpolate(text, vars) {
     if (!vars) return text;
     return text.replace(/\{(\w+)\}/g, (match, key) =>
       Object.prototype.hasOwnProperty.call(vars, key) ? String(vars[key]) : match);
   }
 
-  // Egyetlen fordítási belépési pont: t("kulcs", {valtozo}).
-  // Ha egy kulcs hiányzik az aktuális nyelvből, az angol változat, végső esetben
-  // maga a kulcs jelenik meg (látható jelzés, nem néma hiba).
+  // The single translation entry point: t("key", {var}).
+  // If a key is missing from the current language, the English version is used, and as a last
+  // resort the key itself (a visible signal rather than a silent failure).
   function t(key, vars) {
     const dict = registry[current] || {};
     const fallback = registry[FALLBACK_LANGUAGE] || {};
@@ -68,15 +68,15 @@
     return interpolate(String(raw), vars);
   }
 
-  // Egy adott nyelv saját szótára (a nyelvlistához: mindegyik nyelv a saját nevét mutatja).
+  // The dictionary of one specific language (for the language list: each language shows its own name).
   function valueOf(code, key) {
     const dict = registry[code] || {};
     return Object.prototype.hasOwnProperty.call(dict, key) ? dict[key] : key;
   }
 
-  // Deklaratív kötés. A data-i18n-html szándékosan külön attribútum: csak első féltől
-  // származó nyelvi fájlok adhatnak benne inline jelölést (<strong>, <code>), és ezek
-  // a fájlok maguk is scriptek, tehát ugyanabban a bizalmi körben vannak, mint az app.js.
+  // Declarative binding. data-i18n-html is deliberately a separate attribute: only first-party
+  // language files may supply inline markup (<strong>, <code>) through it, and those files are
+  // themselves scripts, so they are in the same trust circle as app.js.
   function apply(root) {
     const scope = root || document;
     scope.querySelectorAll("[data-i18n]").forEach(element => { element.textContent = t(element.dataset.i18n); });
@@ -90,8 +90,8 @@
     return Object.keys(registry).sort();
   }
 
-  // A menü a regisztrált nyelvekből épül fel, ezért egy új nyelvhez csak egy új
-  // lang/ui/<kód>.js script tag kell – a HTML nem változik.
+  // The menu is built from the registered languages, so a new language needs only one new
+  // lang/ui/<code>.js script tag - the HTML does not change.
   function renderLanguageMenu() {
     const menu = document.getElementById("lang-menu");
     if (!menu) return;
@@ -147,7 +147,7 @@
     renderLanguageMenu();
     updateSwitcher();
     changeListeners.forEach(listener => {
-      try { listener(current); } catch (err) { /* egy nézetfrissítési hiba ne törje meg a nyelvváltást */ }
+      try { listener(current); } catch (err) { /* a view refresh error must not break the language switch */ }
     });
   }
 
@@ -155,8 +155,8 @@
     changeListeners.push(listener);
   }
 
-  // A nyelv mindig a dokumentum betöltésekor dől el, mielőtt az app.js futna:
-  // 1) mentett választás, 2) böngészőnyelv, 3) angol.
+  // The language is always decided when the document loads, before app.js runs:
+  // 1) saved choice, 2) browser language, 3) English.
   window.t = t;
   window.PWGEN_L10N = {
     t: t,

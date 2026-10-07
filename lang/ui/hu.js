@@ -1,13 +1,13 @@
-// Magyar felületi szövegek (UI strings) – NEM a jelmondat-szólista.
-// A szólista külön fájl: lang/hun.js (window.HU_WORDS).
-// A kulcsok szemantikusak és nyelvfüggetlenek; a HTML a data-i18n attribútumokon
-// keresztül, a JavaScript a t("kulcs", {valtozo}) híváson keresztül olvassa őket.
-// Az értékek tartalmazhatnak {helyorzo} interpolációt; néhány szöveg szándékosan
-// tartalmaz inline HTML-t (<strong>, <code>) – ezekhez a HTML-ben data-i18n-html tartozik.
+// Hungarian UI strings - NOT the passphrase word list.
+// The word list is a separate file: lang/hun.js (window.HU_WORDS).
+// Keys are semantic and language-independent; the HTML reads them through the data-i18n
+// attributes, and JavaScript through the t("key", {var}) call.
+// Values may contain {placeholder} interpolation; a few texts deliberately contain
+// inline HTML (<strong>, <code>) and are bound with data-i18n-html in the HTML.
 window.PWGEN_I18N = window.PWGEN_I18N || {};
 
 window.PWGEN_I18N.hu = {
-  // A nyelv saját neve (endonima) – a többi nyelv listájában ez jelenik meg.
+  // The language's own name (endonym) - shown in the list of the other languages.
   "language.name": "Magyar",
   "language.code": "HU",
   "language.flag": "🇭🇺",

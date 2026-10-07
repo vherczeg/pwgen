@@ -1,8 +1,8 @@
-// Magyar szólista a jelmondat-generátorhoz (16384 szó).
-// Nyelvkód: hun (ISO 639-2/T és ISO 639-3) – a fájlnév ezzel a kóddal egyezik.
-// Ez a fájl a szólista egyetlen forrása: a szavak módosítása itt történik.
-// Szándékosan klasszikus script tag (nem fetch/XHR), hogy file:// alól is betöltődjön.
-// Forrás: hu_HU.dic (Hunspell) + Webcorpus 2 gyakorisági lista (Rácz Péter, 2025); a korábbi 7776 szó megmaradt.
+// Hungarian word list for the passphrase generator (16384 words).
+// Language code: hun (ISO 639-2/T and ISO 639-3) - the file name matches this code.
+// This file is the single source of the word list: words are modified here.
+// Deliberately a classic script tag (not fetch/XHR) so that it also loads from file://.
+// Source: hu_HU.dic (Hunspell) + Webcorpus 2 frequency list (Péter Rácz, 2025); the previous 7776 words were kept.
 window.HU_WORDS = [
 "ablak",
 "ablakemelő",
