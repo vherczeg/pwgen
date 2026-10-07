@@ -327,26 +327,26 @@
     guesses = Math.min(guesses, bruteforceGuesses(password, charset));
     guesses = Math.max(1, Math.min(guesses, MAX_GUESSES));
 
+    // guesses: the actual estimate, used for classification.
+    // exponent: its rounded order of magnitude, used for the "~10^N" display only.
     return { guesses, exponent: Math.round(Math.log10(guesses)), segments, byStart };
   }
 
   // ---------------------------------------------------------------- rating
 
-  // Six levels, matching the scale already used by the other two tabs.
-  function ratingForExponent(exponent) {
-    if (exponent < 5) return "very-weak";
-    if (exponent < 8) return "weak";
-    if (exponent < 11) return "medium";
-    if (exponent < 14) return "good";
-    if (exponent < 18) return "strong";
-    return "very-strong";
+  // Six levels from the shared scale (strength.js). The category is derived from the
+  // ACTUAL estimated guess count, log2(guesses), and not from the rounded exponent used
+  // for the "~10^N" display: rounding the exponent would shift the category by up to
+  // ~0.5 decimal orders (~1.66 bits) around the shared 35/45/55/65/80-bit boundaries.
+  // The bit-equivalent value is an internal classification axis only - the UI keeps
+  // showing the estimated number of guesses and never presents this as entropy.
+  function ratingForGuesses(guesses) {
+    return strength.levelForBits(strength.bitsFromGuesses(guesses));
   }
 
-  const RATING_KEYS = {
-    "very-weak": "quality.veryWeak", weak: "quality.weak", medium: "quality.medium",
-    good: "quality.good", strong: "quality.strong", "very-strong": "quality.veryStrong"
-  };
-  const RATING_FILL = { "very-weak": 1, weak: 2, medium: 3, good: 4, strong: 5, "very-strong": 6 };
+  // The shared scale also supplies the label keys and the meter fill, so no thresholds or
+  // category lists are duplicated here.
+  const strength = window.PWGEN_STRENGTH;
 
   // ---------------------------------------------------------------- findings
 
@@ -373,10 +373,10 @@
     // set", and a long predictable word+year string is not praised for its length.
     const coverage = lengths ? matches.reduce((sum, match) => sum + (match.end - match.start), 0) / lengths : 0;
     const mostlyPredictable = matches.some(match => match.common) || coverage >= 0.5;
-    const strongEnough = (RATING_FILL[rating] || 0) >= RATING_FILL.medium;
+    const strongEnough = (strength.fillFor(rating) || 0) >= strength.fillFor("medium");
     // Character-class diversity is only reported once the estimate is genuinely
     // strong: mixing cases/digits/symbols is not itself a strength.
-    const clearlyStrong = (RATING_FILL[rating] || 0) >= RATING_FILL.good;
+    const clearlyStrong = (strength.fillFor(rating) || 0) >= strength.fillFor("good");
 
     if (lengths >= 16 && !mostlyPredictable) strengths.push("check.find.goodLength");
     if (!mostlyPredictable && strongEnough && !has("repeatChar") && !has("repeatBlock")) strengths.push("check.find.noRepetition");
@@ -449,11 +449,12 @@
     analysed = result;
     emptyState.hidden = true;
     results.hidden = false;
-    quality.textContent = t(RATING_KEYS[result.rating]);
+    const levelKey = strength.keyFor(result.rating);
+    quality.textContent = t(levelKey);
     quality.className = "quality " + result.rating;
-    meter.setAttribute("data-fill", String(RATING_FILL[result.rating]));
+    strength.fillMeter(meter, result.rating);
     meter.setAttribute("aria-hidden", "false");
-    meter.setAttribute("aria-label", t("check.meterAria", { rating: t(RATING_KEYS[result.rating]) }));
+    meter.setAttribute("aria-label", t("check.meterAria", { rating: t(levelKey) }));
     guessesOut.textContent = t("check.orderOfMagnitude", { exponent: result.exponent });
     lengthOut.textContent = t("check.lengthValue", { count: result.lengths });
     renderList(strengthsOut, result.strengths);
@@ -505,7 +506,7 @@
     if (value.length > MAX_LENGTH) { input.value = value.slice(0, MAX_LENGTH); value = input.value; }
     if (!value.length) { reset(); return; }
     const result = estimate(value);
-    const rating = ratingForExponent(result.exponent);
+    const rating = ratingForGuesses(result.guesses);   // the display below still uses result.exponent
     const derived = findings(value, result, rating);
     render({
       exponent: result.exponent, rating, lengths: [...value].length,

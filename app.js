@@ -20,16 +20,14 @@
   function clampInteger(v,min,max) { const n=Number.parseInt(v,10); return Number.isFinite(n)?Math.min(max,Math.max(min,n)):min; }
   function filterAmbiguous(chars) { return $("#avoid-ambiguous").checked ? [...chars].filter(c=>!AMBIGUOUS.has(c)).join("") : chars; }
   function uniqueChars(chars) { return [...new Set([...chars])].join(""); }
-  // Six-level, informational UX rating (not an official standard).
+  // Six-level, informational UX rating (not an official standard). The scale itself is
+  // shared by all three tabs (strength.js); for generated values it classifies the
+  // generation entropy in bits.
   function qualityForBits(bits) {
-    if(bits>=80) return {label:t("quality.veryStrong"),c:"very-strong"};
-    if(bits>=65) return {label:t("quality.strong"),c:"strong"};
-    if(bits>=55) return {label:t("quality.good"),c:"good"};
-    if(bits>=45) return {label:t("quality.medium"),c:"medium"};
-    if(bits>=35) return {label:t("quality.weak"),c:"weak"};
-    return {label:t("quality.veryWeak"),c:"very-weak"};
+    const level=window.PWGEN_STRENGTH.levelForBits(bits);
+    return {label:t(window.PWGEN_STRENGTH.keyFor(level)),c:level};
   }
-  function showQuality(bits,bitsEl,qEl) { const q=qualityForBits(bits); bitsEl.textContent=t("password.bits",{bits:Math.round(bits)}); qEl.textContent=q.label; qEl.className=`quality ${q.c}`; }
+  function showQuality(bits,bitsEl,qEl) { const q=qualityForBits(bits); bitsEl.textContent=t("password.bits",{bits:Math.round(bits)}); qEl.textContent=q.label; qEl.className=`quality ${q.c}`; window.PWGEN_STRENGTH.fillMeter($("#password-meter"),q.c); }
 
   function passwordGroups() {
     const lower=filterAmbiguous(BASE_LOWER), upper=filterAmbiguous(BASE_UPPER);
@@ -357,6 +355,7 @@
     row.bits.textContent=t("candidate.status",{bits:Math.round(bits),length:characterLength(phrase)});
     row.quality.textContent=quality.label;
     row.quality.className=`quality ${quality.c}`;
+    window.PWGEN_STRENGTH.fillMeter(row.meter,quality.c);
     row.compat.hidden=!websiteRequirementsActive();
     row.compat.textContent=check.ok?t("compat.ok"):t("compat.bad");
     row.compat.className=`compat ${check.ok?"ok":"bad"}`;
@@ -534,16 +533,20 @@
       info.setAttribute("aria-label",t("entropy.infoAria"));
       info.setAttribute("aria-expanded","false");
       bitsLine.appendChild(bits); bitsLine.appendChild(info);
+      const meter=document.createElement("span"); meter.className="meter meter-sm"; meter.setAttribute("aria-hidden","true");
+      for(let i=0;i<6;i++) meter.appendChild(document.createElement("span"));
+      const qualityLine=document.createElement("span"); qualityLine.className="quality-line";
       const quality=document.createElement("span"); quality.className="quality";
       const compat=document.createElement("span"); compat.className="compat"; compat.hidden=true;
-      strength.appendChild(bitsLine); strength.appendChild(quality); strength.appendChild(compat);
+      qualityLine.appendChild(meter); qualityLine.appendChild(quality);
+      strength.appendChild(bitsLine); strength.appendChild(qualityLine); strength.appendChild(compat);
       const button=document.createElement("button"); button.type="button"; button.className="copy"; button.textContent=t("actions.copy");
       button.addEventListener("click",()=>copyText(text.textContent));
       const index=candidateRows.length;
       info.addEventListener("click",event=>{ if(event&&event.stopPropagation) event.stopPropagation(); toggleEntropyInfo(index); });
       row.appendChild(text); row.appendChild(strength); row.appendChild(button);
       $("#phrase-list").appendChild(row);
-      candidateRows.push({row,text,bits,bitsLine,info,quality,compat,button});
+      candidateRows.push({row,text,bits,bitsLine,info,meter,quality,compat,button});
     }
     while(candidateRows.length>count) candidateRows.pop().row.remove();
   }

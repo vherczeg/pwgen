@@ -41,7 +41,7 @@ window.PWGEN_I18N.hu = {
   "password.minSymbols": "Minimum speciális jel",
   "password.symbolSet": "Használható speciális karakterek",
   "password.symbolSetHelp": "Ha egy webhely nem fogad el bizonyos jeleket, egyszerűen töröld őket innen. A minimum értékek csak akkor érvényesek, ha az adott karaktertípus be van kapcsolva.",
-  "password.bits": "Becsült entrópia: {bits} bit",
+  "password.bits": "Generálási entrópia: {bits} bit",
   "password.needSymbol": "Adj meg legalább egy speciális karaktert!",
   "password.minGreaterThanLength": "A minimum karakterek száma ({count}) nagyobb a jelszó hosszánál.",
 
@@ -115,6 +115,7 @@ window.PWGEN_I18N.hu = {
   "entropy.title": "Mit jelent az entrópia?",
   "entropy.infoAria": "Entrópia magyarázata",
   "entropy.intro": "Az entrópia azt becsüli, hány bitnyi véletlenszerűség van a generálási folyamatban. Minél nagyobb az érték, annál több lehetséges jelmondat közül kellene egy támadónak keresnie.",
+  "entropy.vsChecker": "Egy generált jelszó vagy jelmondat entrópiája a véletlen generálási folyamatból számítható. Egy már létező jelszónál nem tudjuk, hogyan választották ki, ezért ott ismert minták alapján a szükséges próbálkozások számát becsüljük.",
   "entropy.value": "{bits} bit ≈ 2{sup} lehetséges kimenet.",
   "entropy.count": "≈ {count} lehetséges kimenet",
   "entropy.notLength": "Az entrópia nem ugyanaz, mint a karakterszám. Egy hosszabb jelmondat nem automatikusan erősebb; az számít, hogy mekkora és mennyire véletlen generálási térből választottuk.",
